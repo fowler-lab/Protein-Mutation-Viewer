@@ -1,11 +1,18 @@
+from flask import Flask, render_template
+import os.path
+
+
+
 import pandas as pd
 from collections import defaultdict
 
 
-REFERENCE_DIR = "../../data/reference-proteins/"
-MUTATIONS_DIR = "../../data/mutations/"
+REFERENCE_DIR = "data/reference-proteins/"
+MUTATIONS_DIR = "data/mutations/"
+DATASET = pd.read_pickle("data/MUTATIONS-Spike.pkl.gz")
 
 def get_muatation_counts(mutations):
+    assert len(mutations) > 0
     mutation_counts = defaultdict(int)
     #Checking for SNPs first
     for mutation in mutations:
@@ -57,12 +64,30 @@ def write_new_pdb(mutation_counts, filename="out.pdb", reference=REFERENCE_DIR+"
                 line = ''.join(line)
             f.write(line)
 
-dataset = pd.read_pickle("../../data/MUTATIONS-Spike.pkl.gz")
+def run():
+    app = Flask(__name__, static_url_path='', static_folder='', template_folder='templates')
 
-#Pull out all mutation sites and the number of times that site has been mutated
-mutations = dataset["mutation"]
+    @app.route("/")
+    def index():
+        return render_template("index.html")
+    
+    @app.route("/viewer/pango/<lineage>")
+    def view_lineage(lineage):
+        #Check if the pdb has already been made, and generate as required
+        if not os.path.isfile(MUTATIONS_DIR+lineage+".pdb"):
+            try:
+                write_new_pdb(get_muatation_counts(DATASET[DATASET["pango_lineage"] == lineage]["mutation"]), filename=lineage+".pdb")
+            except AssertionError:
+                #This mutation has no data
+                return "<h3>No data found for lineage "+lineage+"</h3>"
+        return render_template("viewer.html", pdb=lineage)
+    
+    @app.route("/list/pango")
+    def list_lineages():
+        lineages = sorted(list(set(DATASET["pango_lineage"])))
+        return render_template("pango_list.html", lineages=lineages)
+    
+    app.run(debug=True, port=4000)
 
-write_new_pdb(get_muatation_counts(mutations))
-write_new_pdb(get_muatation_counts(dataset[dataset["pango_lineage"] == "A.1"]["mutation"]), filename="A1.pdb")
-write_new_pdb(get_muatation_counts(dataset[dataset["pango_lineage"] == "B.1.617.2"]["mutation"]), filename="delta.pdb")
-
+if __name__ == "__main__":
+    run()

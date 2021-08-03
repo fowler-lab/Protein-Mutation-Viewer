@@ -17,15 +17,15 @@
                 text-align: center;
             }
         </style>
-        <link rel="stylesheet" type="text/css" href="http://localhost:1338/build/viewer/molstar.css" />
+        <link rel="stylesheet" type="text/css" href="/molstar-mutation/build/viewer/molstar.css" />
     </head>
     <body>
         <div style="text-align: center;align-content: center;">
-            <h3>Test</h3>
+            <h3>Pango Lineage: {{pdb}}</h3>
             <div style="align-self: flex-start; padding-left: 50px;"></div>
             <div style="align-content: flex-end;">
                 <div id="app"></div>
-                <script type="text/javascript" src="http://localhost:1338/build/viewer/molstar.js"></script>
+                <script type="text/javascript" src="/molstar-mutation/build/viewer/molstar.js"></script>
                 <script type="text/javascript">
                     function getParam(name, regex) {
                         var r = new RegExp(name + '=' + '(' + regex + ')[&]?', 'i');
@@ -54,35 +54,7 @@
                         pdbProvider: pdbProvider || 'pdbe',
                         emdbProvider: emdbProvider || 'pdbe',
                     });
-
-                    var snapshotId = getParam('snapshot-id', '[^&]+').trim();
-                    if (snapshotId) viewer.setRemoteSnapshot(snapshotId);
-
-                    var snapshotUrl = getParam('snapshot-url', '[^&]+').trim();
-                    var snapshotUrlType = getParam('snapshot-url-type', '[^&]+').toLowerCase().trim() || 'molj';
-                    if (snapshotUrl && snapshotUrlType) viewer.loadSnapshotFromUrl(snapshotUrl, snapshotUrlType);
-
-                    var structureUrl = getParam('structure-url', '[^&]+').trim();
-                    var structureUrlFormat = getParam('structure-url-format', '[a-z]+').toLowerCase().trim();
-                    // console.log(structureUrlFormat);
-                    var structureUrlIsBinary = getParam('structure-url-is-binary', '[^&]+').trim() === '1';
-                    // if (structureUrl) {
-                    //     viewer.loadStructureFromUrl(structureUrl, structureUrlFormat, structureUrlIsBinary);
-                    //     for (const s of viewer.plugin.managers.structure.hierarchy.current.structures) {
-                    //         viewer.plugin.managers.structure.component.updateRepresentationsTheme(s.components, { color: OccupancyColorThemeProvider });
-                    //         console.log(s.components);
-                    //         }
-                    // }
-                    viewer.loadStructureFromUrl("http://localhost:1338/data/mutations/{{pdb}}.pdb", "pdb", false);
-
-                    var pdb = getParam('pdb', '[^&]+').trim();
-                    if (pdb) viewer.loadPdb(pdb);
-
-                    var pdbDev = getParam('pdb-dev', '[^&]+').trim();
-                    if (pdbDev) viewer.loadPdbDev(pdbDev);
-
-                    var emdb = getParam('emdb', '[^&]+').trim();
-                    if (emdb) viewer.loadEmdb(emdb);
+                    viewer.loadStructureFromUrl("/data/mutations/{{pdb}}.pdb", "pdb", false);
                 </script>
             </div>
         </div>
