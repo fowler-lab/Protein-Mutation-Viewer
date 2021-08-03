@@ -1,14 +1,9 @@
-<!DOCTYPE html>
-<head>
-    <title>
-        Protein Mutations
-    </title>
-</head>
-<body>
+{% extends 'base.html' %}
+{% block main %}
     <h3>
         The following pangolin lineages have mutations available:
     </h3>
     {% for lineage in lineages %}
-        <a href="http://localhost:4000/viewer/pango/{{lineage}}">{{lineage}}</a><br>
+        <a href="{{url_for('view_lineage', lineage=lineage)}}">{{lineage}}</a><br>
     {% endfor %}
-</body>
+{% endblock %}
