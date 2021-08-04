@@ -1,15 +1,11 @@
 from flask import Flask, render_template, url_for, redirect
 import os.path
+from os import mkdir
 
 
 
 import pandas as pd
-from collections import defaultdict
-
-
-REFERENCE_DIR = "data/reference-proteins/"
-MUTATIONS_DIR = "data/mutations/"
-DATASET = pd.read_pickle("data/MUTATIONS-Spike.pkl.gz")
+from collections import defaultdict, Counter
 
 def get_muatation_counts(mutations, threshold=5):
     '''Function to get the normalised number of mutations at each amino acid residue
@@ -34,10 +30,16 @@ def get_muatation_counts(mutations, threshold=5):
     max_count = max(mutation_counts.values())
 
     def normalise(count, max_count):
-            return round(0.75* (count / max_count)**2 + 0.25, 2)
+        return round(count/max_count, 2)
+        # return round(0.75* (count / max_count)**2 + 0.25, 2)
 
     mutation_counts = {index: normalise(mutation_counts[index], max_count) for index in mutation_counts.keys() if mutation_counts[index] >= threshold}
     return mutation_counts
+
+def get_counts_by_lineage():
+    '''Get the number of mutations by lineage
+    '''    
+    return Counter(DATASET["pango_lineage"])
 
 def write_new_pdb(mutation_counts, filename="out.pdb", reference=REFERENCE_DIR+"6vxx.pdb"):
     '''Writes a new pdb file with the occupancy field altered appropriately for the mutation_counts
@@ -121,40 +123,59 @@ def run():
     '''    
     app = Flask(__name__, static_url_path='', static_folder='', template_folder='templates')
 
+    @app.errorhandler(404)
+    def page_not_found(e):
+        return render_template('404.html')
+
     @app.route("/")
     def index():
         '''Render the index page
         '''  
-        print(render_template("index.html"))      
         return render_template("index.html")
     
+    @app.route("/viewer/covid/spike/pango")
+    def viewer_home():
+        return render_template('viewer.html')
+    
     @app.route("/viewer/covid/spike/pango/<lineage>")
-    def view_lineage(lineage):
+    def view_lineage(lineage=''):
         '''Page for viewing mutations in the covid spike protein
 
         Args:
             lineage (str): Name of the pango lineage
         '''        
+        lineage = lineage.upper()
         #Check if the pdb has already been made, and generate as required
-        if not os.path.isfile(MUTATIONS_DIR+lineage+".pdb"):
-            try:
-                write_new_pdb(get_muatation_counts(DATASET[DATASET["pango_lineage"] == lineage]["mutation"]), filename=lineage+".pdb")
-            except AssertionError:
-                #This mutation has no data
-                return "<h3>No data found for lineage "+lineage+"</h3>"
+        # if not os.path.isfile(MUTATIONS_DIR+lineage+".pdb"):
+        try:
+            mutation_counts = get_muatation_counts(DATASET[DATASET["pango_lineage"] == lineage]["mutation"])
+            write_new_pdb(mutation_counts, filename=lineage+".pdb")
+        except AssertionError:
+            #This mutation has no data
+            return render_template('viewer.html', lineage=lineage)
         if not os.path.isfile(REFERENCE_DIR+"6vxx-blank.pdb"):
             write_reference_pdb(filename="6vxx-blank.pdb")
-        print(render_template("viewer.html", pdb=lineage))
-        return render_template("viewer.html", pdb=lineage)
+        return render_template("viewer.html", pdb=lineage, mutation_counts=mutation_counts)
     
     @app.route("/list/pango")
     def list_lineages():
         '''Render a page containing a list of pango lineages
         '''        
         lineages = sorted(list(set(DATASET["pango_lineage"])))
-        return render_template("pango_list.html", lineages=lineages)
+        counts = get_counts_by_lineage()
+        # counts = {lineage: len(get_muatation_counts(DATASET[DATASET["pango_lineage"] == lineage]["mutation"])) for lineage in lineages}
+        return render_template("pango_list.html", lineages=lineages, counts=counts)
     
     app.run(debug=True, port=4000)
 
 if __name__ == "__main__":
+    REFERENCE_DIR = "data/reference-proteins/"
+    MUTATIONS_DIR = "data/mutations/"
+    DATASET = pd.read_pickle("data/MUTATIONS-Spike.pkl.gz")
+
+    #Ensure that the MUTATIONS_DIR and REFERENCE_DIR exist
+    if not os.path.isdir(REFERENCE_DIR):
+        mkdir(REFERENCE_DIR)
+    if not os.path.isdir(MUTATIONS_DIR):
+        mkdir(MUTATIONS_DIR)
     run()

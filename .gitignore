@@ -130,4 +130,5 @@ dmypy.json
 
 #Ignoring pdb files and the mutations catalog
 *.pdb
+!data/reference-proteins/6vxx.pdb
 data/MUTATIONS-Spike.pkl.gz

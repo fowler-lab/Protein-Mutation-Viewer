@@ -1,66 +1,105 @@
 {% extends 'base.html' %}
 {% block main %}
-    <style>
-        #app {
-            margin-left: 0%;
-            margin-right: 0%;
-            border: 0ch;
-            position:fixed;
-            width: 50%;
-            height: 75%;
-            align-self: center;
-            text-align: center;
-        }
-    </style>
-    <link rel="stylesheet" type="text/css" href="/molstar-mutation/build/viewer/molstar.css" />
-    <div style="text-align: center;align-content: center;">
+    {% if pdb is not defined %}
+        {% if lineage is defined %}
+            <h3>No data found for lineage {{lineage}}</h3>
+            <p>Search for another: </p>
+        {% else %}
+            <h3>Find a lineage to view</h3>
+        {% endif %}
+        <form style="align-self: center;width: 75%" class="d-flex" id='search'>
+            <input class="form-control me-2" placeholder="Search by pango lineage" aria-label="Search" id="search-box">
+            <button class="btn btn-outline-success" type="submit">Search</button>
+        </form>
+        <script>
+            document.getElementById("search").onsubmit = function(e){
+                window.location.assign('{{ url_for("view_lineage", lineage="", _external=True) }}'+document.getElementById('search-box').value);
+                e.preventDefault();
+                return false;
+            }
+        </script>
+    {% else %}
+        <style>
+            #app {
+                position:relative;
+                width: 60rem;
+                height: 750px;
+                float: right;
+            }
+        </style>
+        <link rel="stylesheet" type="text/css" href="/molstar-mutation/build/viewer/molstar.css" />
         <h3>Pango Lineage: {{pdb}}</h3>
-        <br>
-        <div>
-            <div id="app"></div>
-            <script type="text/javascript" src="/molstar-mutation/build/viewer/molstar.js"></script>
-            <script type="text/javascript">
-                function sleep(ms) {
-                    return new Promise(resolve => setTimeout(resolve, ms));
-                    }
-
-                async function load_structure() {
-                    viewer.plugin.is_reference = true;
-                    await viewer.loadStructureFromUrl("/data/reference-proteins/6vxx-blank.pdb", "pdb", false);
-                    // await sleep(2000);
-                    viewer.plugin.is_reference = false;
-                    await viewer.loadStructureFromUrl("/data/mutations/{{pdb}}.pdb", "pdb", false);
-                }
-                function getParam(name, regex) {
-                    var r = new RegExp(name + '=' + '(' + regex + ')[&]?', 'i');
-                    return decodeURIComponent(((window.location.search || '').match(r) || [])[1] || '');
-                }
-
-                var debugMode = getParam('debug-mode', '[^&]+').trim() === '1';
-                if (debugMode) molstar.setDebugMode(debugMode, debugMode);
-
-                var hideControls = getParam('hide-controls', '[^&]+').trim() === '1';
-                var collapseLeftPanel = getParam('collapse-left-panel', '[^&]+').trim() === '1';
-                var pdbProvider = getParam('pdb-provider', '[^&]+').trim().toLowerCase();
-                var emdbProvider = getParam('emdb-provider', '[^&]+').trim().toLowerCase();
-                var viewer = new molstar.Viewer('app', {
-                    layoutIsExpanded: false,
-                    layoutShowRemoteState: false,
-                    layoutShowSequence: true,
-                    layoutShowLog: false,
-                    layoutShowLeftPanel: false,
-                    viewportShowExpand: false,
-                    viewportShowSelectionMode: false,
-                    viewportShowAnimation: false,
-                    layoutShowControls: true,
-                    viewportShowExpand: false,
-                    collapseLeftPanel: collapseLeftPanel,
-                    pdbProvider: pdbProvider || 'pdbe',
-                    emdbProvider: emdbProvider || 'pdbe',
-                });
-                
-                load_structure();
-            </script>
+        <div class="d-flex">
+            <div>
+                <p>Relative mutation is a normalised measure of how many mutations occured at a given amino acid index</p>
+            </div>
+            <div style="width: 10rem;"></div>
+            <div>
+                <div style="width: 25rem; background: rgb(252,251,253); background: linear-gradient(90deg, rgba(252,251,253,1) 0%, rgba(63,0,125,1) 100%); border: 2px; border-color: black; border-style: solid;">
+                    <br>
+                </div>
+                <div class="flex-container">
+                    <p style="float: left;">0.0</p>
+                    <p style="float: right;">1.0</p>
+                </div>
+            </div>
         </div>
-    </div>
+        <br>
+        <div class="d-flex">
+            <div style="width:100rem; float: left; height: 750px;">
+                <div>
+                    <table class="table" style="width: 20rem;">
+                        <tr style="position: absolute;">
+                            <th>Amino acid index</th>
+                            <th>Relative mutation</th>
+                        </tr>
+                    </table>
+                    <br>
+                    <div style="height: 10rem; overflow: scroll;">
+                        <table class="table" style="width: 20rem;">
+                            {% for index in mutation_counts.keys() %}
+                                <tr>
+                                    <td>{{index}}</td>
+                                    <td>{{mutation_counts[index]}}</td>
+                                </tr>
+                            {% endfor %}
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <div>
+                    <div>
+                        <div id="app"></div>
+                        <script type="text/javascript" src="/molstar-mutation/build/viewer/molstar.js"></script>
+                        <script type="text/javascript">
+                            async function load_structure() {
+                                viewer.plugin.is_reference = true;
+                                await viewer.loadStructureFromUrl("/data/reference-proteins/6vxx-blank.pdb", "pdb", false);
+                                viewer.plugin.is_reference = false;
+                                await viewer.loadStructureFromUrl("/data/mutations/{{pdb}}.pdb", "pdb", false);
+                            }
+                            var viewer = new molstar.Viewer('app', {
+                                layoutIsExpanded: false,
+                                layoutShowRemoteState: false,
+                                layoutShowSequence: true,
+                                layoutShowLog: false,
+                                layoutShowLeftPanel: false,
+                                viewportShowExpand: false,
+                                viewportShowSelectionMode: false,
+                                viewportShowAnimation: false,
+                                layoutShowControls: true,
+                                viewportShowExpand: false,
+                                collapseLeftPanel: true,
+                                pdbProvider: 'pdbe',
+                                emdbProvider: 'pdbe',
+                            });
+                            
+                            load_structure();
+                        </script>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
 {% endblock %}

@@ -1,9 +1,25 @@
 {% extends 'base.html' %}
 {% block main %}
-    <h3>
-        The following pangolin lineages have mutations available:
-    </h3>
-    {% for lineage in lineages %}
-        <a href="{{url_for('view_lineage', lineage=lineage)}}">{{lineage}}</a><br>
-    {% endfor %}
+    <div>
+        <h3>Search by pango lineage</h3>
+        <form style="align-self: center;width: 75%" class="d-flex" id='search'>
+            <input class="form-control me-2" placeholder="Search by pango lineage" aria-label="Search" id="search-box">
+            <button class="btn btn-outline-success" type="submit">Search</button>
+        </form>
+        <script>
+            document.getElementById("search").onsubmit = function(e){
+                window.location.assign('{{ url_for("view_lineage", lineage="", _external=True) }}'+document.getElementById('search-box').value);
+                e.preventDefault();
+                return false;
+            }
+        </script>
+    </div>
+    <br>
+    <br>
+    <h5>The following pango lineages have mutations available:</h5>
+    <ul>
+        {% for lineage in lineages %}
+            <li style="padding-bottom: 5px;"><a href="{{url_for('view_lineage', lineage=lineage)}}"><strong>{{lineage}}</strong> ({{counts[lineage]}} mutations)</a></li>
+        {% endfor %}
+    </ul>
 {% endblock %}
