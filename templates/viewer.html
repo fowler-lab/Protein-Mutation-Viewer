@@ -27,6 +27,7 @@
                 float: right;
             }
         </style>
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
         <link rel="stylesheet" type="text/css" href="/molstar-mutation/build/viewer/molstar.css" />
         <h3>Pango Lineage: {{pdb}}</h3>
         <div class="d-flex">
@@ -44,28 +45,73 @@
                 </div>
             </div>
         </div>
-        <br>
         <div class="d-flex">
-            <div style="width:100rem; float: left; height: 750px;">
-                <div>
-                    <table class="table" style="width: 20rem;">
-                        <tr style="position: absolute;">
-                            <th>Amino acid index</th>
-                            <th>Relative mutation</th>
+            <div style="width:100rem; float: left; height: 750px; overflow: scroll;">
+                <table class="table" style="width: 20rem; position: relative;" id="mutation-table">
+                    <thead>
+                        <tr style="position: sticky; top:0; border: black; border-width: 1px; background-color: white;">
+                            <th id="aa-index">Amino acid</th>
+                            <th id="rel-mut">Relative mutations</th>
                         </tr>
-                    </table>
-                    <br>
-                    <div style="height: 10rem; overflow: scroll;">
-                        <table class="table" style="width: 20rem;">
-                            {% for index in mutation_counts.keys() %}
-                                <tr>
-                                    <td>{{index}}</td>
-                                    <td>{{mutation_counts[index]}}</td>
-                                </tr>
-                            {% endfor %}
-                        </table>
-                    </div>
-                </div>
+                    </thead>
+                    <tbody style="margin-top: 25px">
+                        {% for index in mutation_counts.keys()|sort %}
+                            <tr id="{{index}}" value="{{references[index]}}" onclick="getMutants({{index}});">
+                                <td>{{references[index]}}{{index}}</td>
+                                <td>{{mutation_counts[index]}}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <script>
+                    //  sortTable(f,n)
+                    //  f : 1 ascending order, -1 descending order
+                    //  n : n-th child(<td>) of <tr>
+                    function sortTable(f,n){
+                        var rows = $('#mutation-table tbody  tr').get();
+        
+                        rows.sort(function(a, b) {
+        
+                            var A = getVal(a);
+                            var B = getVal(b);
+        
+                            if(A < B) {
+                                return -1*f;
+                            }
+                            if(A > B) {
+                                return 1*f;
+                            }
+                            return 0;
+                        });
+        
+                        function getVal(elm){
+                            var v = $(elm).children('td').eq(n).text().toUpperCase();
+                            if($.isNumeric(v)){
+                                v = parseInt(v,10);
+                            }
+                            else{
+                                v = parseInt(v.substr(1), 10);
+                            }
+                            return v;
+                        }
+        
+                        $.each(rows, function(index, row) {
+                            $('#mutation-table').children('tbody').append(row);
+                        });
+                    }
+                    var f_sl = 1; // flag to toggle the sorting order
+                    var f_nm = 1; // flag to toggle the sorting order
+                    $("#aa-index").click(function(){
+                        f_sl *= -1; // toggle the sorting order
+                        var n = $(this).prevAll().length;
+                        sortTable(f_sl,n);
+                    });
+                    $("#rel-mut").click(function(){
+                        f_nm *= -1; // toggle the sorting order
+                        var n = $(this).prevAll().length;
+                        sortTable(f_nm,n);
+                    });
+                </script>
             </div>
             <div>
                 <div>
@@ -100,6 +146,42 @@
                     </div>
                 </div>
             </div>
+        </div>
+        <br>
+        <br>
+        <div>
+            <div id="mutations"></div>
+            <script>
+                var mutations = {
+                    {% for index in mutations.keys() %}
+                        {{index}}: 
+                            [
+                                {% for aa in mutations[index].keys() %}
+                                    [ 
+                                        "{{aa}}", {{mutations[index][aa]}}
+                                    ],
+                                {% endfor %}
+                            ],
+                    {% endfor %}
+                };
+                console.log(mutations);
+                function getMutants(index){
+                    // Get the information on the mutations at this amino acid index
+                    counts = mutations[index];
+                    console.log(document.getElementById(index).attributes.value);
+                    console.log(counts);
+                    var reference = document.getElementById(index).attributes.value.nodeValue;
+                    var html = "<h5>Reference amino acid: " + reference + "</h5>";
+                    html = html + "<table class='table' style='width: 30%;'><tr><th>Amino acid mutation</th><th>Frequency</th></tr>";
+                    for (var i=0; i<counts.length; i++){
+                        aa = counts[i][0];
+                        count = counts[i][1];    
+                        html = html + "<tr><td>" + aa + "</td><td>" + count + "</tr>";
+                    }
+                    html = html + "</table>";
+                    document.getElementById("mutations").innerHTML = html;
+                }
+            </script>
         </div>
     {% endif %}
 {% endblock %}

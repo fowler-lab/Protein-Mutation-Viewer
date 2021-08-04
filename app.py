@@ -19,16 +19,21 @@ def get_muatation_counts(mutations, threshold=5):
         threshold (int, optional): Threshold to consider a mutation. Defaults to 5
 
     Returns:
-        dict: Dictionary mapping mutation_index->normalised_count
+        (dict, dict): Tuple of dictionaries mapping mutation_index->normalised_count and mutation_index->reference_amino_acid
     '''    
     assert len(mutations) > 0
     mutation_counts = defaultdict(int)
+    references = {}
+    mutants = defaultdict(list)
     #Checking for SNPs first
     for mutation in mutations:
         if "del" in mutation or "ins" in mutation or "indel" in mutation:
             mutation_counts[int(mutation.split("_")[0])] += 1
+            mutants[int(mutation.split("_")[0])].append(mutation.split("_")[1])
         else:
+            references[int(mutation[1:-1])] = str(mutation[0])
             mutation_counts[int(mutation[1:-1])] += 1
+            mutants[int(mutation[1:-1])].append(mutation[-1])
 
     #Normalise the counts to fall between 0 and 1
     max_count = max(mutation_counts.values())
@@ -38,7 +43,10 @@ def get_muatation_counts(mutations, threshold=5):
         # return round(0.75* (count / max_count)**2 + 0.25, 2)
 
     mutation_counts = {index: normalise(mutation_counts[index], max_count) for index in mutation_counts.keys() if mutation_counts[index] >= threshold}
-    return mutation_counts
+    #Ignore all values which have normalised counts of 0
+    mutation_counts = {index : mutation_counts[index] for index in mutation_counts.keys() if mutation_counts[index] > 0}
+    mutants = {index: Counter(mutants[index]) for index in mutants.keys() if index in mutation_counts.keys()}
+    return mutation_counts, references, mutants
 
 def get_counts_by_lineage():
     '''Get the number of mutations by lineage
@@ -152,14 +160,14 @@ def run():
         #Check if the pdb has already been made, and generate as required
         # if not os.path.isfile(MUTATIONS_DIR+lineage+".pdb"):
         try:
-            mutation_counts = get_muatation_counts(DATASET[DATASET["pango_lineage"] == lineage]["mutation"])
+            mutation_counts, references, mutations = get_muatation_counts(DATASET[DATASET["pango_lineage"] == lineage]["mutation"])
             write_new_pdb(mutation_counts, filename=lineage+".pdb")
         except AssertionError:
             #This mutation has no data
             return render_template('viewer.html', lineage=lineage)
         if not os.path.isfile(REFERENCE_DIR+"6vxx-blank.pdb"):
             write_reference_pdb(filename="6vxx-blank.pdb")
-        return render_template("viewer.html", pdb=lineage, mutation_counts=mutation_counts)
+        return render_template("viewer.html", pdb=lineage, mutation_counts=mutation_counts, references=references, mutations=mutations)
     
     @app.route("/list/pango")
     def list_lineages():
