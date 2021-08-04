@@ -50,13 +50,20 @@
                 <table class="table" style="width: 20rem; position: relative;" id="mutation-table">
                     <thead>
                         <tr style="position: sticky; top:0; border: black; border-width: 1px; background-color: white;">
-                            <th id="aa-index">Amino acid</th>
-                            <th id="rel-mut">Relative mutations</th>
+                            <th id="aa-index" title="Sort by amino acid index">Amino acid</th>
+                            <th id="rel-mut" title="Sort by relative mutation">Relative mutation</th>
                         </tr>
                     </thead>
                     <tbody style="margin-top: 25px">
                         {% for index in mutation_counts.keys()|sort %}
-                            <tr id="{{index}}" value="{{references[index]}}" onclick="getMutants({{index}});">
+                            <tr 
+                                id="{{index}}" 
+                                value="{{references[index]}}" 
+                                onclick="getMutants({{index}});" 
+                                onmouseover="this.style['background'] = 'rgba(200, 200, 200, 1)'" 
+                                onmouseleave="this.style['background'] = 'rgba(255, 255, 255, 1)'"
+                                title="Click to view amino acid mutations"
+                            >
                                 <td>{{references[index]}}{{index}}</td>
                                 <td>{{mutation_counts[index]}}</td>
                             </tr>
@@ -164,7 +171,6 @@
                             ],
                     {% endfor %}
                 };
-                console.log(mutations);
                 function getMutants(index){
                     // Get the information on the mutations at this amino acid index
                     counts = mutations[index];
@@ -180,6 +186,7 @@
                     }
                     html = html + "</table>";
                     document.getElementById("mutations").innerHTML = html;
+                    document.getElementById("mutations").scrollIntoView();
                 }
             </script>
         </div>
