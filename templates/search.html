@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block main %}
+    <div>
+        <h3>Search results for query: "<em>{{query}}</em>"{% if type in ['pango', 'scorpio'] %} within {{type}} lineages{% endif %}</h3>
+        <br>
+        {% if scorpio_results|length > 0 %}
+            <div>
+                {% if type == None %}
+                    <h5>Scorpio lineages</h5>
+                {% endif %}
+                <ul>
+                    {% for result in scorpio_results %}
+                        <li><a href="{{url_for('view_lineage', lin_type='scorpio', lineage=result)}}">{{result}}</a></li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+        {% if pango_results|length >0 %}
+            <div>
+                {% if type == None %}
+                    <h5>Pango lineages</h5>
+                {% endif %}
+                <ul>
+                    {% for result in pango_results %}
+                        <li><a href="{{url_for('view_lineage', lin_type='pango', lineage=result)}}">{{result}}</a></li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+    </div>
+{% endblock %}

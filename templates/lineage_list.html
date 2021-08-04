@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block main %}
+    <div>
+        <h3>Search by {{type}} lineage</h3>
+        <form style="align-self: center;width: 75%" class="d-flex" id='search'>
+            <input class="form-control me-2" placeholder="Search by {{type}} lineage" aria-label="Search" id="search-box">
+            <button class="btn btn-outline-success" type="submit">Search</button>
+        </form>
+        <script>
+            document.getElementById("search").onsubmit = function(e){
+                window.location.assign('{{ url_for("search", _external=True) }}?type={{type}}&query='+document.getElementById('search-box').value);
+                e.preventDefault();
+                return false;
+            }
+        </script>
+    </div>
+    <br>
+    <br>
+    <h5>The following {{type}} lineages have mutations available:</h5>
+    <ul>
+        {% for lineage in lineages %}
+            <li style="padding-bottom: 5px;"><a href="{{url_for('view_lineage', lin_type=type, lineage=lineage)}}"><strong>{{lineage}}</strong> ({{counts[lineage]}} mutations)</a></li>
+        {% endfor %}
+    </ul>
+{% endblock %}

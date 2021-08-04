@@ -1,11 +1,9 @@
-from flask import Flask, render_template, url_for, redirect
 import os.path
+from collections import Counter, defaultdict
 from os import mkdir
 
-
-
 import pandas as pd
-from collections import defaultdict, Counter
+from flask import Flask, redirect, render_template, url_for, request
 
 REFERENCE_DIR = "data/reference-proteins/"
 MUTATIONS_DIR = "data/mutations/"
@@ -48,10 +46,21 @@ def get_muatation_counts(mutations, threshold=5):
     mutants = {index: Counter(mutants[index]) for index in mutants.keys() if index in mutation_counts.keys()}
     return mutation_counts, references, mutants
 
-def get_counts_by_lineage():
+def get_counts_by_lineage(lineage="pango"):
     '''Get the number of mutations by lineage
+
+    Args:
+        lineage (str, optional): The name of the lineage type. One of ['pango', 'scorpio']
+    Returns:
+        dict: A counter dict to count the number of occurances of each lineage
     '''    
-    return Counter(DATASET["pango_lineage"])
+    if lineage == "scorpio":
+        lineage = "scorpio_call"
+    elif lineage == "pango":
+        lineage = "pango_lineage"
+    else:
+        return {}
+    return Counter([i for i in DATASET[lineage] if not pd.isnull(i)])
 
 def write_new_pdb(mutation_counts, filename="out.pdb", reference=REFERENCE_DIR+"6vxx.pdb"):
     '''Writes a new pdb file with the occupancy field altered appropriately for the mutation_counts
@@ -145,39 +154,81 @@ def run():
         '''  
         return render_template("index.html")
     
-    @app.route("/viewer/covid/spike/pango")
+    @app.route("/viewer/covid/spike")
     def viewer_home():
-        return render_template('viewer.html')
+        return render_template("viewer.html")
     
-    @app.route("/viewer/covid/spike/pango/<lineage>")
-    def view_lineage(lineage=''):
+    @app.route("/viewer/covid/spike/<lin_type>")
+    def viewer_lineage_home(lin_type):
+        if lin_type in ["pango", "scorpio"]:
+            return render_template('viewer.html', type=lin_type)
+        else:
+            return render_template('404.html'), 404
+    
+    @app.route("/viewer/covid/spike/<lin_type>/<lineage>")
+    def view_lineage(lin_type, lineage):
         '''Page for viewing mutations in the covid spike protein
 
         Args:
             lineage (str): Name of the pango lineage
         '''        
-        lineage = lineage.upper()
+        if lin_type == "pango":
+            lineage = lineage.upper()
+        elif lin_type != "scorpio":
+            #If the lineage type is not pango or scorpio, 404
+            return render_template('404.html'), 404
         #Check if the pdb has already been made, and generate as required
         # if not os.path.isfile(MUTATIONS_DIR+lineage+".pdb"):
         try:
-            mutation_counts, references, mutations = get_muatation_counts(DATASET[DATASET["pango_lineage"] == lineage]["mutation"])
+            if lin_type == "pango":
+                mutation_counts, references, mutations = get_muatation_counts(DATASET[DATASET["pango_lineage"] == lineage]["mutation"])
+            else:
+                mutation_counts, references, mutations = get_muatation_counts(DATASET[DATASET["scorpio_call"] == lineage]["mutation"])
             write_new_pdb(mutation_counts, filename=lineage+".pdb")
         except AssertionError:
             #This mutation has no data
             return render_template('viewer.html', lineage=lineage)
         if not os.path.isfile(REFERENCE_DIR+"6vxx-blank.pdb"):
             write_reference_pdb(filename="6vxx-blank.pdb")
-        return render_template("viewer.html", pdb=lineage, mutation_counts=mutation_counts, references=references, mutations=mutations)
+        return render_template("viewer.html", pdb=lineage, mutation_counts=mutation_counts, references=references, mutations=mutations, type=lin_type)
     
-    @app.route("/list/pango")
-    def list_lineages():
-        '''Render a page containing a list of pango lineages
+    @app.route("/list/<lin_type>")
+    def list_lineages(lin_type):
+        '''Render a page containing a list of lineages
         '''        
-        lineages = sorted(list(set(DATASET["pango_lineage"])))
-        counts = get_counts_by_lineage()
-        # counts = {lineage: len(get_muatation_counts(DATASET[DATASET["pango_lineage"] == lineage]["mutation"])) for lineage in lineages}
-        return render_template("pango_list.html", lineages=lineages, counts=counts)
+        if lin_type == "pango":
+            lineages = sorted(list(set(DATASET["pango_lineage"])))
+        elif lin_type == "scorpio":
+            lineages = sorted(list(set([i for i in DATASET["scorpio_call"] if not pd.isnull(i)])))
+        else:
+            return render_template('404.html'), 404
+        counts = get_counts_by_lineage(lin_type)
+        return render_template("lineage_list.html", lineages=lineages, counts=counts, type=lin_type)
     
+    @app.route("/search")
+    def search():
+        '''Render a page of results for a lineage search
+        '''        
+        query = request.args.get("query")
+        type_restriction = request.args.get("type")
+        if query:
+            scorpio = list(set([i for i in DATASET["scorpio_call"] if not pd.isnull(i)]))
+            pango = list(set(DATASET["pango_lineage"]))
+            if type_restriction != "pango":
+                scorpio_results = [i for i in scorpio if query.lower() in i.lower()]
+            else:
+                scorpio_results = []
+            if type_restriction != "scorpio":
+                pango_results = [i for i in pango if query.lower() in i.lower()]
+            else:
+                pango_results = []
+            return render_template('search.html', query=query, scorpio_results=scorpio_results, pango_results=pango_results, type=type_restriction)
+        else:
+            return render_template('viewer.html', type="scorpio")
+
+
+
+
     app.run(debug=True, port=4000)
 
 if __name__ == "__main__":

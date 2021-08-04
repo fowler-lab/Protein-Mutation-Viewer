@@ -1,5 +1,8 @@
 {% extends 'base.html' %}
 {% block main %}
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
+    <link rel="stylesheet" type="text/css" href="/molstar-mutation/build/viewer/molstar.css" />
+    <script type="text/javascript" src="/molstar-mutation/build/viewer/molstar.js"></script>
     {% if pdb is not defined %}
         {% if lineage is defined %}
             <h3>No data found for lineage {{lineage}}</h3>
@@ -8,27 +11,17 @@
             <h3>Find a lineage to view</h3>
         {% endif %}
         <form style="align-self: center;width: 75%" class="d-flex" id='search'>
-            <input class="form-control me-2" placeholder="Search by pango lineage" aria-label="Search" id="search-box">
+            <input class="form-control me-2" placeholder="Search by lineage" aria-label="Search" id="search-box">
             <button class="btn btn-outline-success" type="submit">Search</button>
         </form>
         <script>
             document.getElementById("search").onsubmit = function(e){
-                window.location.assign('{{ url_for("view_lineage", lineage="", _external=True) }}'+document.getElementById('search-box').value);
+                window.location.assign('{{ url_for("search", _external=True) }}?query='+document.getElementById('search-box').value);              
                 e.preventDefault();
                 return false;
             }
         </script>
     {% else %}
-        <style>
-            #app {
-                position:relative;
-                width: 60rem;
-                height: 750px;
-                float: right;
-            }
-        </style>
-        <script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
-        <link rel="stylesheet" type="text/css" href="/molstar-mutation/build/viewer/molstar.css" />
         <h3>Pango Lineage: {{pdb}}</h3>
         <div class="d-flex">
             <div>
@@ -46,7 +39,7 @@
             </div>
         </div>
         <div class="d-flex">
-            <div style="width:100rem; float: left; height: 750px; overflow: scroll;">
+            <div style="width:100rem; float: left; height: 750px; overflow-y: scroll; overflow-x: hidden;">
                 <table class="table" style="width: 20rem; position: relative;" id="mutation-table">
                     <thead>
                         <tr style="position: sticky; top:0; border: black; border-width: 1px; background-color: white;">
@@ -123,32 +116,63 @@
             <div>
                 <div>
                     <div>
-                        <div id="app"></div>
-                        <script type="text/javascript" src="/molstar-mutation/build/viewer/molstar.js"></script>
+                        <style>
+                            #app {
+                                position:relative;
+                                width: 60rem;
+                                height: 750px;
+                                float: right;
+                                resize: both;
+                                overflow: auto;
+                            }
+                        </style>
+                        <div id="app" onmouseup="resize_check();" onmouseover="being_resized=false;" onmousemove="being_resized=false;"></div>
                         <script type="text/javascript">
+                            var being_resized;
+                            var viewer;
+
                             async function load_structure() {
                                 viewer.plugin.is_reference = true;
                                 await viewer.loadStructureFromUrl("/data/reference-proteins/6vxx-blank.pdb", "pdb", false);
                                 viewer.plugin.is_reference = false;
                                 await viewer.loadStructureFromUrl("/data/mutations/{{pdb}}.pdb", "pdb", false);
                             }
-                            var viewer = new molstar.Viewer('app', {
-                                layoutIsExpanded: false,
-                                layoutShowRemoteState: false,
-                                layoutShowSequence: true,
-                                layoutShowLog: false,
-                                layoutShowLeftPanel: false,
-                                viewportShowExpand: false,
-                                viewportShowSelectionMode: false,
-                                viewportShowAnimation: false,
-                                layoutShowControls: true,
-                                viewportShowExpand: false,
-                                collapseLeftPanel: true,
-                                pdbProvider: 'pdbe',
-                                emdbProvider: 'pdbe',
-                            });
-                            
-                            load_structure();
+
+                            window.onload = async function(){
+                                viewer = new molstar.Viewer('app', {
+                                    layoutIsExpanded: false,
+                                    layoutShowRemoteState: false,
+                                    layoutShowSequence: true,
+                                    layoutShowLog: false,
+                                    layoutShowLeftPanel: false,
+                                    viewportShowExpand: false,
+                                    viewportShowSelectionMode: false,
+                                    viewportShowAnimation: false,
+                                    layoutShowControls: true,
+                                    viewportShowExpand: false,
+                                    collapseLeftPanel: true,
+                                    pdbProvider: 'pdbe',
+                                    emdbProvider: 'pdbe',
+                                });
+                                
+                                await load_structure();
+
+                                const resize_ob = new ResizeObserver(function(entries) {
+                                    // Set the bool to show the app has been resized
+                                    being_resized = true;
+                                });
+                                resize_ob.observe(document.querySelector('#app'));
+                                being_resized = false;
+                            }
+
+                            async function resize_check(){
+                                if (being_resized === true){
+                                    //The element has just been resized so redraw it
+                                    viewer.plugin.handleResize();
+                                    being_resized = false;
+                                }
+                            }
+
                         </script>
                     </div>
                 </div>
