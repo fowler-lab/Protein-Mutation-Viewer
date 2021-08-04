@@ -7,6 +7,10 @@ from os import mkdir
 import pandas as pd
 from collections import defaultdict, Counter
 
+REFERENCE_DIR = "data/reference-proteins/"
+MUTATIONS_DIR = "data/mutations/"
+DATASET = pd.read_pickle("data/MUTATIONS-Spike.pkl.gz")
+
 def get_muatation_counts(mutations, threshold=5):
     '''Function to get the normalised number of mutations at each amino acid residue
 
@@ -169,10 +173,6 @@ def run():
     app.run(debug=True, port=4000)
 
 if __name__ == "__main__":
-    REFERENCE_DIR = "data/reference-proteins/"
-    MUTATIONS_DIR = "data/mutations/"
-    DATASET = pd.read_pickle("data/MUTATIONS-Spike.pkl.gz")
-
     #Ensure that the MUTATIONS_DIR and REFERENCE_DIR exist
     if not os.path.isdir(REFERENCE_DIR):
         mkdir(REFERENCE_DIR)
