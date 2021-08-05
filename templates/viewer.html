@@ -22,7 +22,7 @@
             }
         </script>
     {% else %}
-        <h3>Pango Lineage: {{pdb}}</h3>
+        <h3>{{type|title}} Lineage: {{pdb}}</h3>
         <div class="d-flex">
             <div>
                 <p>Relative mutation is a normalised measure of how many mutations occured at a given amino acid index</p>
@@ -87,7 +87,12 @@
                         function getVal(elm){
                             var v = $(elm).children('td').eq(n).text().toUpperCase();
                             if($.isNumeric(v)){
-                                v = parseInt(v,10);
+                                if(v.includes('.')){
+                                    v = parseFloat(v,10);
+                                }
+                                else{
+                                    v = parseInt(v, 10);
+                                }
                             }
                             else{
                                 v = parseInt(v.substr(1), 10);
@@ -168,7 +173,7 @@
                             async function resize_check(){
                                 if (being_resized === true){
                                     //The element has just been resized so redraw it
-                                    viewer.plugin.handleResize();
+                                    viewer.handleResize();
                                     being_resized = false;
                                 }
                             }

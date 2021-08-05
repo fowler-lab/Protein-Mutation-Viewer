@@ -27,7 +27,7 @@ def get_muatation_counts(mutations, threshold=5):
     for mutation in mutations:
         if "del" in mutation or "ins" in mutation or "indel" in mutation:
             mutation_counts[int(mutation.split("_")[0])] += 1
-            mutants[int(mutation.split("_")[0])].append(mutation.split("_")[1])
+            mutants[int(mutation.split("_")[0])].append("_".join(mutation.split("_")[1:]))
         else:
             references[int(mutation[1:-1])] = str(mutation[0])
             mutation_counts[int(mutation[1:-1])] += 1
@@ -173,7 +173,8 @@ def run():
             lineage (str): Name of the pango lineage
         '''        
         if lin_type == "pango":
-            lineage = lineage.upper()
+            pass
+            # lineage = lineage.upper()
         elif lin_type != "scorpio":
             #If the lineage type is not pango or scorpio, 404
             return render_template('404.html'), 404
