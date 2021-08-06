@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% block main %}
+    <div>
+        <h3>Search results for query: "<em>{{query}}</em>"{% if type in ['pango', 'scorpio'] %} within {{type}} lineages{% endif %}</h3>
+        <br>
+        {% if scorpio_results|length > 0 %}
+            <div>
+                {% if type == None %}
+                    <h5>Scorpio lineages</h5>
+                {% endif %}
+                <ul>
+                    {% for result in scorpio_results %}
+                        {% if lin_type1 is defined and lineage1 is defined %}
+                            <li><a href="{{url_for('comparison', lin_type1=lin_type1, lineage1=lineage1, lin_type2='scorpio', lineage2=result)|safe}}">{{result}}</a></li>
+                        {% elif compare == True %}
+                            <li><a href="{{url_for('search', lin_type1='scorpio', lineage1=result)|safe}}">{{result}}</a></li>
+                        {% else %}
+                            <li><a href="{{url_for('view_lineage', lin_type='scorpio', lineage=result)}}">{{result}}</a></li>
+                        {% endif %}
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+        {% if pango_results|length >0 %}
+            <div>
+                {% if type == None %}
+                    <h5>Pango lineages</h5>
+                {% endif %}
+                <ul>
+                    {% for result in pango_results %}
+                        {% if lin_type1 is defined and lineage1 is defined %}
+                            <li><a href="{{url_for('comparison', lin_type1=lin_type1, lineage1=lineage1, lin_type2='pango', lineage2=result)|safe}}">{{result}}</a></li>
+                        {% elif compare == True %}
+                            <li><a href="{{url_for('search', lin_type1='pango', lineage1=result)|safe}}">{{result}}</a></li>
+                        {% else %}
+                            <li><a href="{{url_for('view_lineage', lin_type='pango', lineage=result)}}">{{result}}</a></li>
+                        {% endif %}
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+    </div>
+{% endblock %}

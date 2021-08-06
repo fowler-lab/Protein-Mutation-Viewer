@@ -21,14 +21,17 @@
                 <a class="nav-link {% if url_for('viewer_home') in request.path %}active{% endif%}" href="{{ url_for('viewer_home') }}">Viewer</a>
               </li>
               <li class="nav-item">
-                <a class="nav-link {% if request.path == url_for('list_lineages') %}active{% endif%}" href="{{ url_for('list_lineages') }}">Lineages</a>
+                <a class="nav-link {% if url_for('comparison') in request.path %}active{% endif%}" href="{{ url_for('comparison') }}">Compare</a>
               </li>
-              <!-- <li class="nav-item">
-                <a class="nav-link disabled" href="#" tabindex="-1" aria-disabled="true">Disabled</a>
-              </li> -->
+              <li class="nav-item">
+                <a class="nav-link {% if request.path == url_for('list_lineages', lin_type='pango') %}active{% endif%}" href="{{ url_for('list_lineages', lin_type='pango') }}">Pango</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link {% if request.path == url_for('list_lineages', lin_type='scorpio') %}active{% endif%}" href="{{ url_for('list_lineages', lin_type='scorpio') }}">Scorpio</a>
+              </li>
             </ul>
             <form class="d-flex" id='nav-search'>
-              <input class="form-control me-2" placeholder="Search by pango lineage" aria-label="Search" id="nav-search-box">
+              <input class="form-control me-2" placeholder="Search by lineage" aria-label="Search" id="nav-search-box">
               <button class="btn btn-outline-success" type="submit">Search</button>
             </form>
           </div>
@@ -37,7 +40,7 @@
       <!-- Script to handle navbar searching -->
       <script>
         document.getElementById("nav-search").onsubmit = function(e){
-          window.location.assign('{{ url_for("view_lineage", lineage="", _external=True) }}'+document.getElementById('nav-search-box').value);
+          window.location.assign('{{ url_for("search", _external=True) }}?query='+document.getElementById('nav-search-box').value);
           e.preventDefault();
           return false;
         }
