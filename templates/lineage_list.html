@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block main %}
     <div>
-        <h3>Search by {{type}} lineage</h3>
+        <h3>{{type|title}} lineages</h3>
         <form style="align-self: center;width: 75%" class="d-flex" id='search'>
             <input class="form-control me-2" placeholder="Search by {{type}} lineage" aria-label="Search" id="search-box">
             <button class="btn btn-outline-success" type="submit">Search</button>

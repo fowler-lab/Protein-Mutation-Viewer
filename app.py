@@ -9,6 +9,11 @@ REFERENCE_DIR = "data/reference-proteins/"
 MUTATIONS_DIR = "data/mutations/"
 DATASET = pd.read_pickle("data/MUTATIONS-Spike.pkl.gz")
 
+class MissingDataException(Exception):
+    '''Exception class used to show when there was no data available for a given lineage
+    '''    
+    pass
+
 def get_muatation_counts(mutations, threshold=5):
     '''Function to get the normalised number of mutations at each amino acid residue
 
@@ -19,7 +24,8 @@ def get_muatation_counts(mutations, threshold=5):
     Returns:
         (dict, dict): Tuple of dictionaries mapping mutation_index->normalised_count and mutation_index->reference_amino_acid
     '''    
-    assert len(mutations) > 0
+    if len(mutations) == 0:
+        raise MissingDataException("No data given")
     mutation_counts = defaultdict(int)
     references = {}
     mutants = defaultdict(list)
@@ -105,14 +111,24 @@ def write_new_pdb(mutation_counts, filename="out.pdb", reference=REFERENCE_DIR+"
             f.write(line)
         
 def compare_mutations(mutations1, mutations2):
-    '''Merge two dictionaries of mutations together using the cantor pairing function to give a single value
+    '''Merge two dictionaries of mutations together using the cantor pairing function to give a single value.
+    Cantor pairing function: (x, y)-> z -> (x, y) where x, y, z are all natural numbers.
+        f(x, y) = 1/2 * (x + y) * (x + y + 1) + y = z
+        f'(z) = (w - z + t, z - t) = (x, y) where
+            w = int(((8 * z + 1)**0.5 - 1) / 2)
+            t = w * (w + 1) / 2
+    This is adapted here to convert the decimal values to natural numbers and vice versa for this purpose.
+    This involves truncating the values to [0.0, 0.1, .. 0.9, 1.0] and then mutliplying by 10 to lie in [0, 1, ... 9, 10]
+    This results in the cantor pairing function having a domain of [0, 220], 
+        which can be divided by 100 to lie within [0.00, 9.99] to fit within the occupancy field -
+        allowing reconstitution of the x and y values within the viewer's code
 
     Args:
         mutations1 (dict): Dictionary mapping index->mutation_count
         mutations2 (dict): Dictionary mapping index->mutation_count
     
     Returns:
-        dict: Dictionary mapping index->value where value is the product of the cantor pairing function of the corresponding pair
+        dict: Dictionary mapping index->value where value is the product of the modified cantor pairing function of the corresponding pair
     '''
     keys = set(mutations1.keys()).union(set(mutations2.keys()))
     merged = {}
@@ -235,7 +251,7 @@ def run():
             else:
                 mutation_counts, references, mutations = get_muatation_counts(DATASET[DATASET["scorpio_call"] == lineage]["mutation"])
             write_new_pdb(mutation_counts, filename=lineage+".pdb")
-        except AssertionError:
+        except MissingDataException:
             #This mutation has no data
             return render_template('viewer.html', lineage=lineage)
         if not os.path.isfile(REFERENCE_DIR+"6vxx-blank.pdb"):
@@ -260,14 +276,14 @@ def run():
                     mutation_counts1, references1, mutations1 = get_muatation_counts(DATASET[DATASET["pango_lineage"] == lineage1]["mutation"])
                 else:
                     mutation_counts1, references1, mutations1 = get_muatation_counts(DATASET[DATASET["scorpio_call"] == lineage1]["mutation"])
-            except AssertionError:
+            except MissingDataException:
                 unknown.append((lin_type1, lineage1))
             try:
                 if lin_type2 == "pango":
                     mutation_counts2, references2, mutations2 = get_muatation_counts(DATASET[DATASET["pango_lineage"] == lineage2]["mutation"])
                 else:
                     mutation_counts2, references2, mutations2 = get_muatation_counts(DATASET[DATASET["scorpio_call"] == lineage2]["mutation"])
-            except AssertionError:
+            except MissingDataException:
                 unknown.append((lin_type2, lineage2))
             if len(unknown) > 0:
                 return render_template('compare_viewer.html', unknown=unknown)

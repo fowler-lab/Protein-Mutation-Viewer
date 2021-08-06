@@ -12,6 +12,7 @@
         {% else %}
             <h3>Find a lineage to view</h3>
         {% endif %}
+        <br>
         <form style="align-self: center;width: 75%" class="d-flex" id='search'>
             <input class="form-control me-2" placeholder="Search by lineage" aria-label="Search" id="search-box">
             <button class="btn btn-outline-success" type="submit">Search</button>
@@ -214,15 +215,14 @@
                 function getMutants(index){
                     // Get the information on the mutations at this amino acid index
                     counts = mutations[index];
-                    console.log(document.getElementById(index).attributes.value);
-                    console.log(counts);
                     var reference = document.getElementById(index).attributes.value.nodeValue;
                     var html = "<h5>Reference amino acid: " + reference + "</h5>";
                     html = html + "<table class='table' style='width: 30%;'><tr><th>Amino acid mutation</th><th>Frequency</th></tr>";
+                    var total = counts.map(x => x[1]).reduce((x, y) => x + y, 0);
                     for (var i=0; i<counts.length; i++){
                         aa = counts[i][0];
                         count = counts[i][1];    
-                        html = html + "<tr><td>" + aa + "</td><td>" + count + "</tr>";
+                        html = html + "<tr><td>" + aa + "</td><td>" + Math.round(count/total *100000)/1000 + "%</tr>";
                     }
                     html = html + "</table>";
                     document.getElementById("mutations").innerHTML = html;

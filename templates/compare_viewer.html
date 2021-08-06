@@ -18,11 +18,10 @@
                 <h5>Lineage 2 = {{lin_type2|title}}: {{lineage2}} </h5>
                 <p>Relative mutation is a normalised measure of how many mutations occured at a given amino acid index</p>
             </div>
-            <div style="width: 10rem;"></div>
             <div>
                 <table>
                     <tr>
-                        <th rowspan="3">Lineage 1</th>
+                        <th rowspan="3" style="width: 10rem; text-align: right;">Lineage 1</th>
                         <td>1</td>
                         <td rowspan="3" colspan="3">
                             <div style="width: 10rem; height: 10rem;">
@@ -246,11 +245,13 @@
                     var reference = document.getElementById(index).attributes.value.nodeValue;
                     var html = "<h5>Reference amino acid: " + reference + "</h5>";
                     html = html + "<table class='table' style='width: 50%;'><tr><th>Amino acid mutation</th><th>Frequency 1</th><th>Frequency 2</th></tr>";
+                    var total1 = counts.map(x => x[1][0]).reduce((x, y) => x+y, 0) || 1;
+                    var total2 = counts.map(x => x[1][1]).reduce((x, y) => x+y, 0) || 1;
                     for (var i=0; i<counts.length; i++){
                         aa = counts[i][0];
-                        freq1 = counts[i][1][0];
-                        freq2 = counts[i][1][1];   
-                        html = html + "<tr><td>" + aa + "</td><td>" + freq1 + "</td><td>" + freq2 + "</td></tr>";
+                        freq1 = counts[i][1][0] || 0;
+                        freq2 = counts[i][1][1] || 0;   
+                        html = html + "<tr><td>" + aa + "</td><td>" + Math.round(freq1/total1 * 100000)/1000 + "%</td><td>" + Math.round(freq2/total2 *100000)/1000 + "%</td></tr>";
                     }
                     html = html + "</table>";
                     document.getElementById("mutations").innerHTML = html;
