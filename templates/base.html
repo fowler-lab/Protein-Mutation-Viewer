@@ -26,9 +26,9 @@
               <li class="nav-item">
                 <a class="nav-link {% if request.path == url_for('list_lineages', lin_type='scorpio') %}active{% endif%}" href="{{ url_for('list_lineages', lin_type='scorpio') }}">Scorpio</a>
               </li>
-              <!-- <li class="nav-item">
-                <a class="nav-link disabled" href="#" tabindex="-1" aria-disabled="true">Disabled</a>
-              </li> -->
+              <li class="nav-item">
+                <a class="nav-link {% if url_for('comparison') in request.path %}active{% endif%}" href="{{ url_for('comparison') }}">Compare</a>
+              </li>
             </ul>
             <form class="d-flex" id='nav-search'>
               <input class="form-control me-2" placeholder="Search by lineage" aria-label="Search" id="nav-search-box">

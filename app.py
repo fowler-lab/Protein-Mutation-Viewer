@@ -103,7 +103,50 @@ def write_new_pdb(mutation_counts, filename="out.pdb", reference=REFERENCE_DIR+"
                     line[56:60] = list("0.00")
                 line = ''.join(line)
             f.write(line)
+        
+def compare_mutations(mutations1, mutations2):
+    '''Merge two dictionaries of mutations together using the cantor pairing function to give a single value
 
+    Args:
+        mutations1 (dict): Dictionary mapping index->mutation_count
+        mutations2 (dict): Dictionary mapping index->mutation_count
+    
+    Returns:
+        dict: Dictionary mapping index->value where value is the product of the cantor pairing function of the corresponding pair
+    '''
+    keys = set(mutations1.keys()).union(set(mutations2.keys()))
+    merged = {}
+    for key in keys:
+        #Adjust the values to be natural numbers in range 0-10 (this looses some precision, but allows reduction of values)
+        x = round(mutations1.get(key, 0), 1)*10
+        y = round(mutations2.get(key, 0), 1)*10
+        #The output of the cantor pairing function lies between 220-0, so divide by 100 to fit within 0.00-9.99
+        val = round((0.5*(x+y)*(x+y+1)+y)/100, 2)
+        merged[key] = val
+    return merged
+
+def merge_mutations(mutations1, mutations2):
+    '''Merge together two amino acid mutations 
+
+    Args:
+        mutations1 (dict): Dictionary of index->{amino_acid->frequency}
+        mutation2 (dict): Dictionary of index->{amino_acid->frequency}
+    Returns:
+        dict: Dictionary mapping index->{amino_acid->[freq1, freq2]}
+    '''    
+    keys = set(mutations1.keys()).union(mutations2.keys())
+    merged = {}
+    for key in keys:
+        x = mutations1.get(key, dict())
+        y = mutations2.get(key, dict())
+        merged_aa = {}
+        aa_keys = set(x.keys()).union(set(y.keys()))
+        for aa_key in aa_keys:
+            aa_x = x.get(aa_key, 0)
+            aa_y = y.get(aa_key, 0)
+            merged_aa[aa_key] = [aa_x, aa_y]
+        merged[key] = merged_aa
+    return merged
 
 def write_reference_pdb(filename="out.pdb", reference=REFERENCE_DIR+"6vxx.pdb"):
     '''Writes a new pdb file with the occupancy field altered to be 0 consistently - 
@@ -156,7 +199,13 @@ def run():
     
     @app.route("/viewer/covid/spike")
     def viewer_home():
-        return render_template("viewer.html")
+        lin_type1 = request.args.get("lin_type1")
+        lineage1 = request.args.get("lineage1")
+        print("|", lin_type1, "|", lineage1)
+        if lin_type1 is not None and lineage1 is not None:
+            return render_template("viewer.html",  lin_type1=lin_type1, lineage1=lineage1)
+        else:
+            return render_template("viewer.html")
     
     @app.route("/viewer/covid/spike/<lin_type>")
     def viewer_lineage_home(lin_type):
@@ -193,6 +242,46 @@ def run():
             write_reference_pdb(filename="6vxx-blank.pdb")
         return render_template("viewer.html", pdb=lineage, mutation_counts=mutation_counts, references=references, mutations=mutations, type=lin_type)
     
+    @app.route("/viewer/compare/covid/spike/")
+    def comparison():
+        '''Render a page for viewing a comparison of 2 lineages
+        '''        
+        #Get the lineages to compare
+        lin_type1 = request.args.get("lin_type1")
+        lin_type2 = request.args.get("lin_type2")
+        lineage1 = request.args.get("lineage1")
+        lineage2 = request.args.get("lineage2")
+
+        #Get the mutations for both
+        if lin_type1 and lin_type2 and lineage1 and lineage2:
+            unknown = []
+            try:
+                if lin_type1 == "pango":
+                    mutation_counts1, references1, mutations1 = get_muatation_counts(DATASET[DATASET["pango_lineage"] == lineage1]["mutation"])
+                else:
+                    mutation_counts1, references1, mutations1 = get_muatation_counts(DATASET[DATASET["scorpio_call"] == lineage1]["mutation"])
+            except AssertionError:
+                unknown.append((lin_type1, lineage1))
+            try:
+                if lin_type2 == "pango":
+                    mutation_counts2, references2, mutations2 = get_muatation_counts(DATASET[DATASET["pango_lineage"] == lineage2]["mutation"])
+                else:
+                    mutation_counts2, references2, mutations2 = get_muatation_counts(DATASET[DATASET["scorpio_call"] == lineage2]["mutation"])
+            except AssertionError:
+                unknown.append((lin_type2, lineage2))
+            if len(unknown) > 0:
+                return render_template('compare_viewer.html', unknown=unknown)
+            #Merge them
+            mutation_counts = compare_mutations(mutation_counts1, mutation_counts2)
+            mutations = merge_mutations(mutations1, mutations2)
+            write_new_pdb(mutation_counts, filename=f"{lineage1}_{lineage2}.pdb")
+            return render_template('compare_viewer.html', mutation_counts=mutation_counts, lin_type1=lin_type1, lineage1=lineage1,
+                                    lin_type2=lin_type2, lineage2=lineage2, references1=references1, references2=references2,
+                                    mutation_counts1=mutation_counts1, mutation_counts2=mutation_counts2, mutations=mutations)
+        else:
+            return render_template('comparison.html')
+        
+    
     @app.route("/list/<lin_type>")
     def list_lineages(lin_type):
         '''Render a page containing a list of lineages
@@ -212,6 +301,9 @@ def run():
         '''        
         query = request.args.get("query")
         type_restriction = request.args.get("type")
+        lin_type1 = request.args.get("lin_type1")
+        lineage1 = request.args.get("lineage1")
+        compare = bool(request.args.get("compare"))
         if query:
             scorpio = list(set([i for i in DATASET["scorpio_call"] if not pd.isnull(i)]))
             pango = list(set(DATASET["pango_lineage"]))
@@ -223,9 +315,18 @@ def run():
                 pango_results = [i for i in pango if query.lower() in i.lower()]
             else:
                 pango_results = []
-            return render_template('search.html', query=query, scorpio_results=scorpio_results, pango_results=pango_results, type=type_restriction)
+            if lin_type1 and lineage1:
+                return render_template('search.html', query=query, scorpio_results=scorpio_results, pango_results=pango_results, 
+                                        type=type_restriction, lin_type1=lin_type1, lineage1=lineage1, compare=compare)
+            else:
+                return render_template('search.html', query=query, scorpio_results=scorpio_results, pango_results=pango_results, 
+                                        type=type_restriction, compare=compare)
+
         else:
-            return render_template('viewer.html', type="scorpio")
+            if lin_type1 and lineage1:
+                return render_template('viewer.html', lin_type1=lin_type1, lineage1=lineage1, compare=compare)
+            else:
+                return render_template('viewer.html', type="scorpio")
 
 
 

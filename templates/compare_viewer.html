@@ -1,74 +1,96 @@
-{% extends 'base.html' %}
+{% extends 'viewer.html' %}
 {% block main %}
+{% if unknown is defined %}
+    {% for (type, lin) in unknown %}
+        <h3>No data available for lineage {{type}}: {{lin}}</h3>
+    {% endfor %}
+    <a href="url_for('index')">Return home</a>
+{% else %}
     <script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
     <link rel="stylesheet" type="text/css" href="/molstar-mutation/build/viewer/molstar.css" />
     <script type="text/javascript" src="/molstar-mutation/build/viewer/molstar.js"></script>
-    {% if pdb is not defined %}
-        {% if lineage is defined %}
-            <h3>No data found for lineage {{lineage}}</h3>
-            <p>Search for another: </p>
-        {% elif lin_type1 is defined and lineage1 is defined %}
-            <h3>Search for a lineage to compare against {{lin_type1}}: {{lineage1}}</h3>
-        {% else %}
-            <h3>Find a lineage to view</h3>
-        {% endif %}
-        <form style="align-self: center;width: 75%" class="d-flex" id='search'>
-            <input class="form-control me-2" placeholder="Search by lineage" aria-label="Search" id="search-box">
-            <button class="btn btn-outline-success" type="submit">Search</button>
-        </form>
-        <script>
-            document.getElementById("search").onsubmit = function(e){
-                {% if lin_type1 is defined and lineage1 is defined %}
-                window.location.assign('{{url_for("search", lin_type1=lin_type1, lineage1=lineage1, _external=True)|safe}}&query='+document.getElementById('search-box').value);
-                {% else %}
-                window.location.assign('{{ url_for("search", _external=True) }}?query='+document.getElementById('search-box').value);     
-                {% endif %}         
-                e.preventDefault();
-                return false;
-            }
-        </script>
-    {% else %}
-        {% block heading %}
-        <h3>{{type|title}} Lineage: {{pdb}}</h3>
+    {% block heading %}
+        <h3>Comparison of lineages</h3>
         <div class="d-flex">
-            <div>
+            <div style="width:100%;">
+                <br>
+                <h5>Lineage 1 = {{lin_type1|title}}: {{lineage1}} </h5>
+                <h5>Lineage 2 = {{lin_type2|title}}: {{lineage2}} </h5>
                 <p>Relative mutation is a normalised measure of how many mutations occured at a given amino acid index</p>
-                <a href="{{url_for('search', lin_type1=type, lineage1=pdb)}}">Add to comparison</a>
             </div>
             <div style="width: 10rem;"></div>
             <div>
-                <div style="width: 25rem; background: rgb(252,251,253); background: linear-gradient(90deg, rgba(252,251,253,1) 0%, rgba(63,0,125,1) 100%); border: 2px; border-color: black; border-style: solid;">
-                    <br>
-                </div>
-                <div class="flex-container">
-                    <p style="float: left;">0.0</p>
-                    <p style="float: right;">1.0</p>
-                </div>
+                <table>
+                    <tr>
+                        <th rowspan="3">Lineage 1</th>
+                        <td>1</td>
+                        <td rowspan="3" colspan="3">
+                            <div style="width: 10rem; height: 10rem;">
+                                <table>
+                                    {% for i in range(10) %}
+                                        <tr>
+                                        {% for j in range(10) %}
+                                            <td style="width: 1rem;height: 1rem;background-color: rgb({{250 - i*25}}, 0, {{j*25}});"></td>
+                                        {% endfor %}
+                                        </tr>
+                                    {% endfor %}
+                                </table>
+
+
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><br><br><br><br><br></td>
+                    </tr>
+                    <tr>
+                        <td>0</td>
+                    </tr>
+                    <tr>
+                        <td><br></td>
+                        <td><br></td>
+                        <td style="padding-right: 7rem;">0</td>
+                        <td><br></td>
+                        <td>1</td>
+                    </tr>
+                    <tr>
+                        <td><br></td>
+                        <td><br></td>
+                        <th colspan="3" style="text-align: center;">Lineage 2</th>
+                    </tr>
+                </table>
             </div>
         </div>
-        {% endblock %}
-        {% block viewer %}
+        <br>
+    {% endblock %}
+    {% block viewer %}
         <div class="d-flex">
             <div style="width:100rem; float: left; height: 750px; overflow-y: scroll; overflow-x: hidden;">
                 <table class="table" style="width: 20rem; position: relative;" id="mutation-table">
                     <thead>
                         <tr style="position: sticky; top:0; border: black; border-width: 1px; background-color: white;">
                             <th id="aa-index" title="Sort by amino acid index">Amino acid</th>
-                            <th id="rel-mut" title="Sort by relative mutation">Relative mutation</th>
+                            <th id="rel-mut1" title="Sort by relative mutation1">Relative mutation 1</th>
+                            <th id="rel-mut2" title="Sort by relative mutation2">Relative mutation 2</th>
                         </tr>
                     </thead>
                     <tbody style="margin-top: 25px">
                         {% for index in mutation_counts.keys()|sort %}
                             <tr 
                                 id="{{index}}" 
-                                value="{{references[index]}}" 
+                                value="{% if index in references1.keys() %}
+                                        {{references1[index]}}
+                                    {% elif index in references2.keys() %}
+                                        {{references2[index]}}
+                                    {% endif %}" 
                                 onclick="getMutants({{index}});" 
                                 onmouseover="this.style['background'] = 'rgba(200, 200, 200, 1)'" 
                                 onmouseleave="this.style['background'] = 'rgba(255, 255, 255, 1)'"
                                 title="Click to view amino acid mutations"
                             >
-                                <td>{{references[index]}}{{index}}</td>
-                                <td>{{mutation_counts[index]}}</td>
+                                <td>{% if index in references1.keys() %}{{references1[index]}}{% elif index in references2.keys() %}{{references2[index]}}{% endif %}{{index}}</td>
+                                <td>{{mutation_counts1[index]|default(0, True)}}</td>
+                                <td>{{mutation_counts2[index]|default(0, True)}}</td>
                             </tr>
                         {% endfor %}
                     </tbody>
@@ -114,17 +136,23 @@
                             $('#mutation-table').children('tbody').append(row);
                         });
                     }
-                    var f_sl = 1; // flag to toggle the sorting order
-                    var f_nm = 1; // flag to toggle the sorting order
+                    var f_aa = 1; // flag to toggle the sorting order
+                    var f_rm1 = 1; // flag to toggle the sorting order
+                    var f_rm2 = 1;
                     $("#aa-index").click(function(){
-                        f_sl *= -1; // toggle the sorting order
+                        f_aa *= -1; // toggle the sorting order
                         var n = $(this).prevAll().length;
-                        sortTable(f_sl,n);
+                        sortTable(f_aa,n);
                     });
-                    $("#rel-mut").click(function(){
-                        f_nm *= -1; // toggle the sorting order
+                    $("#rel-mut1").click(function(){
+                        f_rm1 *= -1; // toggle the sorting order
                         var n = $(this).prevAll().length;
-                        sortTable(f_nm,n);
+                        sortTable(f_rm1,n);
+                    });
+                    $("#rel-mut2").click(function(){
+                        f_rm2 *= -1; // toggle the sorting order
+                        var n = $(this).prevAll().length;
+                        sortTable(f_rm2,n);
                     });
                 </script>
             </div>
@@ -150,7 +178,8 @@
                                 viewer.plugin.is_reference = true;
                                 await viewer.loadStructureFromUrl("/data/reference-proteins/6vxx-blank.pdb", "pdb", false);
                                 viewer.plugin.is_reference = false;
-                                await viewer.loadStructureFromUrl("/data/mutations/{{pdb}}.pdb", "pdb", false);
+                                viewer.plugin.is_comparison = true;
+                                await viewer.loadStructureFromUrl("/data/mutations/{{lineage1}}_{{lineage2}}.pdb", "pdb", false);
                             }
 
                             window.onload = async function(){
@@ -203,7 +232,7 @@
                     {% for index in mutations.keys() %}
                         {{index}}: 
                             [
-                                {% for aa in mutations[index].keys() %}
+                                {% for aa in mutations[index].keys()|default([], True) %}
                                     [ 
                                         "{{aa}}", {{mutations[index][aa]}}
                                     ],
@@ -213,16 +242,15 @@
                 };
                 function getMutants(index){
                     // Get the information on the mutations at this amino acid index
-                    counts = mutations[index];
-                    console.log(document.getElementById(index).attributes.value);
-                    console.log(counts);
+                    var counts = mutations[index];
                     var reference = document.getElementById(index).attributes.value.nodeValue;
                     var html = "<h5>Reference amino acid: " + reference + "</h5>";
-                    html = html + "<table class='table' style='width: 30%;'><tr><th>Amino acid mutation</th><th>Frequency</th></tr>";
+                    html = html + "<table class='table' style='width: 50%;'><tr><th>Amino acid mutation</th><th>Frequency 1</th><th>Frequency 2</th></tr>";
                     for (var i=0; i<counts.length; i++){
                         aa = counts[i][0];
-                        count = counts[i][1];    
-                        html = html + "<tr><td>" + aa + "</td><td>" + count + "</tr>";
+                        freq1 = counts[i][1][0];
+                        freq2 = counts[i][1][1];   
+                        html = html + "<tr><td>" + aa + "</td><td>" + freq1 + "</td><td>" + freq2 + "</td></tr>";
                     }
                     html = html + "</table>";
                     document.getElementById("mutations").innerHTML = html;
@@ -230,5 +258,7 @@
                 }
             </script>
         </div>
-    {% endif %}
+{% endif %}
 {% endblock %}
+
+
