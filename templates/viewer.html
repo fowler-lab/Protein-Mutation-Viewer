@@ -38,15 +38,42 @@
             </div>
             <div style="width: 10rem;"></div>
             <div>
-                <div style="width: 25rem; background: rgb(252,251,253); background: linear-gradient(90deg, rgba(252,251,253,1) 0%, rgba(63,0,125,1) 100%); border: 2px; border-color: black; border-style: solid;">
+                <div id="colour-picker" style="display: none; position: relative;z-index: 2; width: 100%; height: 100%; background-color: rgb(230, 230, 230); padding: 5px;">
+                    <div class="d-flex" onclick='window.location.assign("{{url_for('index', colour=1, return_path=request.path)}}");'>
+                        <div style="padding-left: 5rem; width: 25rem; background: rgb(252,251,253); background: linear-gradient(90deg, rgba(252,251,253,1) 0%, rgba(63,0,125,1) 100%); border: 2px; border-color: black; border-style: solid;">
+                            <br>
+                        </div>
+                    </div>
+                    <br>
+                    <div class="d-flex" onclick='window.location.assign("{{url_for('index', colour='red', return_path=request.path)}}");'>
+                        <div style="width: 25rem; background: rgb(0,0,0); background: linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(255,0,0,1) 100%); border: 2px; border-color: black; border-style: solid;">
+                            <br>
+                        </div>
+                    </div>
+                    <br>
+                    <div class="d-flex" onclick='window.location.assign("{{url_for('index', colour='green', return_path=request.path)}}");'>
+                        <div style="width: 25rem; background: rgb(0,0,0); background: linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(0,255,0,1) 100%); border: 2px; border-color: black; border-style: solid;">
+                            <br>
+                        </div>
+                    </div>
+                    <br>
+                    <div class="d-flex" onclick='window.location.assign("{{url_for('index', colour='blue', return_path=request.path)}}");'>
+                        <div style="width: 25rem; background: rgb(0,0,0); background: linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(0,0,255,1) 100%); border: 2px; border-color: black; border-style: solid;">
+                            <br>
+                        </div>
+                    </div>
+                </div>
+                <div id="legend" style="width: 25rem; border: 2px; border-color: black; border-style: solid;">
                     <br>
                 </div>
-                <div class="flex-container">
-                    <p style="float: left;">0.0</p>
-                    <p style="float: right;">1.0</p>
+                <div id="legend-labels" class="d-flex" style="width: 25rem;">
+                    <p style="width: 33.3%;text-align: left;">0.0</p>
+                    <a href="javascript: recolour()" style="width: 33.3%;text-align: center;"><small>Recolour</small></a>
+                    <p style="width: 33.3%;text-align: right;">1.0</p>
                 </div>
             </div>
         </div>
+        <br>
         {% endblock %}
         {% block viewer %}
         <div class="d-flex">
@@ -64,7 +91,7 @@
                             <tr 
                                 id="{{index}}" 
                                 value="{{references[index]}}" 
-                                onclick="{% if index not in missing %}mouseclickTable({{i.value}}, {{index}});{% else %}mouseclickTable(-1, {{index}});{% endif %}getMutants({{index}});this.style['background'] = 'rgba(200, 200, 200, 1)';this.onmouseleave=function(){};" 
+                                onclick="{% if index not in missing %}mouseclickTable({{i.value}}, {{index}});{% else %}mouseclickTable(-1, {{index}});{% endif %}getMutants({{index}});this.style['background'] = 'rgba(200, 200, 200, 1)';this.onmouseleave=function(){ {% if index not in missing %}mouseleaveTable({{i.value}});{% endif %} };" 
                                 onmouseover="{% if index not in missing %}mouseoverTable({{i.value}});{% endif %}this.style['background'] = 'rgba(200, 200, 200, 1)';" 
                                 onmouseleave="{% if index not in missing %}mouseleaveTable({{i.value}});{% endif %}this.style['background'] = 'rgba(255, 255, 255, 1)'"
                                 title="Click to view amino acid mutations"
@@ -108,7 +135,12 @@
                                 }
                             }
                             else{
-                                v = parseInt(v.substr(1), 10);
+                                if(v.includes("*")){
+                                    v = parseInt(v.substr(1, v.length-2), 10);
+                                }
+                                else{
+                                    v = parseInt(v.substr(1), 10);
+                                }
                             }
                             return v;
                         }
@@ -150,6 +182,7 @@
                             var viewer;
 
                             async function load_structure() {
+                                viewer.plugin.colour = window.viewer_colour;
                                 viewer.plugin.is_reference = false;
                                 await viewer.loadStructureFromUrl("/data/mutations/{{pdb}}.pdb", "pdb", false);
                                 viewer.plugin.is_reference = true;
@@ -157,6 +190,35 @@
                             }
 
                             window.onload = async function(){
+                                //Read from the cookies to find the colour
+                                var ca = document.cookie.split(";");
+                                var cookie;
+                                for(var i=0;i<ca.length;i++){
+                                    if(ca[i].trim().split("=")[0] == "colour"){
+                                        window.viewer_colour = ca[i].split("=")[1];
+                                    }
+                                }
+
+                                var legend = document.getElementById("legend");
+                                var background;
+                                if (window.viewer_colour === "default"){
+                                    legend.style["background"] = "rgba(252, 251, 253, 1)";
+                                    background = "linear-gradient(90deg, rgba(252,251,253,1) 0%, rgba(63,0,125,1) 100%)"
+                                }
+                                else{
+                                    legend.style["background"] = "rgba(0,0,0,1)";
+                                }
+                                if (window.viewer_colour === "red"){
+                                    background = "linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(255,0,0,1) 100%)"
+                                }
+                                if (window.viewer_colour === "green"){
+                                    background = "linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(0,255,0,1) 100%)"
+                                }
+                                if (window.viewer_colour === "blue"){
+                                    background = "linear-gradient(90deg, rgba(0,0,0,1) 0%, rgba(0,0,255,1) 100%)"
+                                }
+                                legend.style["background"] = background;
+
                                 viewer = new molstar.Viewer('app', {
                                     layoutIsExpanded: false,
                                     layoutShowRemoteState: false,
@@ -189,6 +251,16 @@
                                     viewer.handleResize();
                                     being_resized = false;
                                 }
+                            }
+
+                            function recolour(){
+                                //Show the colour picker
+                                document.getElementById("colour-picker").style["display"] = "block";
+                                
+                                //Hide the current theme
+                                document.getElementById("legend").style["display"] = "none";
+                                document.getElementById("legend-labels").style["display"] = "none";
+
                             }
 
                         </script>
@@ -263,8 +335,13 @@
                     if(window.current_row !== undefined){
                         document.getElementById(window.current_row).onmouseleave = function(){
                             this.style['background'] = 'rgba(255, 255, 255, 1)';
+                            mouseleaveTable(window.current_index);
                         }
                         document.getElementById(window.current_row).style['background'] = 'rgba(255, 255, 255, 1)';
+                        //Clear the focus on an amino acid by clicking the sequence number
+                        var elem = document.querySelectorAll('[class="msp-sequence-number"]')[0];
+                        var event = new MouseEvent('mousedown', {'bubbles': true, 'cancelable': true});
+                        elem.dispatchEvent(event);
                     }
                     //Focus on the given amino acid
                     if(document.querySelectorAll("[title='[Structure] {{pdb}}.pdb']").length > 0 && index >= 0){
@@ -275,10 +352,11 @@
                                                     });
                         elem.dispatchEvent(event);
                     }
-                    document.getElementById("clear-button").innerHTML = "<button class='btn btn-outline-success' onclick='clearFocus("+row_id+");'>Clear selection</button>";
+                    document.getElementById("clear-button").innerHTML = "<button class='btn btn-outline-success' onclick='clearFocus("+row_id+", "+index+");'>Clear selection</button>";
                     window.current_row = row_id
+                    window.current_index = index;
                 }
-                function clearFocus(id){
+                function clearFocus(id, index){
                     //Clear the focus on an amino acid by clicking the sequence number
                     var elem = document.querySelectorAll('[class="msp-sequence-number"]')[0];
                     var event = new MouseEvent('mousedown', {'bubbles': true, 'cancelable': true});
@@ -289,6 +367,7 @@
                     //Revert the row to the usual formatting
                     document.getElementById(id).onmouseleave = function(){
                         this.style['background'] = 'rgba(255, 255, 255, 1)';
+                        mouseleaveTable(index);
                     }
                     document.getElementById(id).style['background'] = 'rgba(255, 255, 255, 1)';
                     //Scroll back up

@@ -1,9 +1,10 @@
 import os.path
 from collections import Counter, defaultdict
 from os import mkdir
+import re
 
 import pandas as pd
-from flask import Flask, redirect, render_template, url_for, request
+from flask import Flask, redirect, render_template, url_for, request, make_response
 
 REFERENCE_DIR = "data/reference-proteins/"
 MUTATIONS_DIR = "data/mutations/"
@@ -220,7 +221,22 @@ def run():
     def index():
         '''Render the index page
         '''  
-        return render_template("index.html")
+        #Check for colour setting
+        # print(request.args.get("colour"))
+        colour = request.args.get("colour")
+        return_path = request.args.get("return_path")
+        if colour:
+            resp = make_response(render_template("set_colour.html", return_path=return_path))
+            if colour == "1":
+                value = "default"
+            elif colour in ["default", "red", "green", "blue"]:
+                value = colour
+            else:
+                return render_template('400.html'), 400
+            resp.set_cookie("colour", value=value, samesite="strict", path="/", max_age=60*60*24*365)
+            return resp
+        else:
+            return render_template("index.html")
     
     @app.route("/viewer/covid/spike")
     def viewer_home():
