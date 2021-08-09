@@ -30,7 +30,7 @@
         </script>
     {% else %}
         {% block heading %}
-        <h3>{{type|title}} Lineage: {{pdb}}</h3>
+        <h3 id="title">{{type|title}} Lineage: {{pdb}}</h3>
         <div class="d-flex">
             <div>
                 <p>Relative mutation is a normalised measure of how many mutations occured at a given amino acid index</p>
@@ -59,17 +59,19 @@
                         </tr>
                     </thead>
                     <tbody style="margin-top: 25px">
+                        {% set i = namespace(value=0) %}
                         {% for index in mutation_counts.keys()|sort %}
                             <tr 
                                 id="{{index}}" 
                                 value="{{references[index]}}" 
-                                onclick="getMutants({{index}});" 
-                                onmouseover="this.style['background'] = 'rgba(200, 200, 200, 1)'" 
-                                onmouseleave="this.style['background'] = 'rgba(255, 255, 255, 1)'"
+                                onclick="{% if index not in missing %}mouseclickTable({{i.value}});{% endif %}getMutants({{index}});" 
+                                onmouseover="{% if index not in missing %}mouseoverTable({{i.value}});{% endif %}this.style['background'] = 'rgba(200, 200, 200, 1)';" 
+                                onmouseleave="{% if index not in missing %}mouseleaveTable({{i.value}});{% endif %}this.style['background'] = 'rgba(255, 255, 255, 1)'"
                                 title="Click to view amino acid mutations"
                             >
-                                <td>{{references[index]}}{{index}}</td>
+                                <td>{{references[index]}}{{index}}{% if index in missing %}*{% endif %}</td>
                                 <td>{{mutation_counts[index]}}</td>
+                                {% if index not in missing %}{% set i.value = i.value + 1 %}{% endif %}
                             </tr>
                         {% endfor %}
                     </tbody>
@@ -148,10 +150,10 @@
                             var viewer;
 
                             async function load_structure() {
-                                viewer.plugin.is_reference = true;
-                                await viewer.loadStructureFromUrl("/data/reference-proteins/6vxx-blank.pdb", "pdb", false);
                                 viewer.plugin.is_reference = false;
                                 await viewer.loadStructureFromUrl("/data/mutations/{{pdb}}.pdb", "pdb", false);
+                                viewer.plugin.is_reference = true;
+                                await viewer.loadStructureFromUrl("/data/reference-proteins/6vxx-blank.pdb", "pdb", false);
                             }
 
                             window.onload = async function(){
@@ -194,6 +196,13 @@
                 </div>
             </div>
         </div>
+        <div>
+            {% if missing|length > 0 %}
+                <small>* This amino acid is missing in the reference model, so no mutations are shown</small>
+            {% endif %}
+        </div>
+        <br>
+        <div id="clear-button"></div>
         {% endblock %}
         <br>
         <br>
@@ -227,6 +236,47 @@
                     html = html + "</table>";
                     document.getElementById("mutations").innerHTML = html;
                     document.getElementById("mutations").scrollIntoView();
+                }
+
+                function mouseoverTable(index){
+                    if(document.querySelectorAll("[title='[Structure] {{pdb}}.pdb']").length > 0){
+                        var elem = document.querySelectorAll('[data-seqid="'+index+'"]')[0];
+                        var event = new MouseEvent('mousemove', {
+                                                    'bubbles': true,
+                                                    'cancelable': true
+                                                    });
+                        elem.dispatchEvent(event);
+                    }
+                }
+                function mouseleaveTable(index){
+                    if(document.querySelectorAll("[title='[Structure] {{pdb}}.pdb']").length > 0){
+                        var elem = document.querySelectorAll('[data-seqid="'+index+'"]')[0];
+                        var event = new MouseEvent('mouseout', {
+                                                    'bubbles': true,
+                                                    'cancelable': true
+                                                    });
+                        elem.dispatchEvent(event);
+                    }
+                }
+                function mouseclickTable(index){
+                    //Focus on the given amino acid
+                    if(document.querySelectorAll("[title='[Structure] {{pdb}}.pdb']").length > 0){
+                        var elem = document.querySelectorAll('[data-seqid="'+index+'"]')[0];
+                        var event = new MouseEvent('mousedown', {
+                                                    'bubbles': true,
+                                                    'cancelable': true
+                                                    });
+                        elem.dispatchEvent(event);
+                        document.getElementById("clear-button").innerHTML = "<button class='btn btn-outline-success' onclick='clearFocus();'>Clear selection</button>";
+                    }
+                }
+                function clearFocus(){
+                    //Clear the focus on an amino acid by clicking the sequence number
+                    var elem = document.querySelectorAll('[class="msp-sequence-number"]')[0];
+                    var event = new MouseEvent('mousedown', {'bubbles': true, 'cancelable': true});
+                    elem.dispatchEvent(event);
+                    document.getElementById("clear-button").innerHTML = "";
+                    document.getElementById("title").scrollIntoView();
                 }
             </script>
         </div>
