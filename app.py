@@ -69,6 +69,18 @@ def get_counts_by_lineage(lineage="pango"):
         return {}
     return Counter([i for i in DATASET[lineage] if not pd.isnull(i)])
 
+def trim(s):
+    '''Takes in a string and returns it without trailing or leading whitespace
+
+    Args:
+        s (str): String
+    '''
+    if s[0] == " ":
+        return trim(s[1:])
+    if s[-1] == " ":
+        return trim(s[:-1])
+    return s
+
 def write_new_pdb(mutation_counts, filename="out.pdb", reference=REFERENCE_DIR+"6vxx.pdb", find_missing=False):
     '''Writes a new pdb file with the occupancy field altered appropriately for the mutation_counts
 
@@ -87,17 +99,6 @@ def write_new_pdb(mutation_counts, filename="out.pdb", reference=REFERENCE_DIR+"
     with open(reference) as f:
         ref = [line for line in f]
 
-    def trim(s):
-        '''Takes in a string and returns it without trailing or leading whitespace
-
-        Args:
-            s (str): String
-        '''
-        if s[0] == " ":
-            return trim(s[1:])
-        if s[-1] == " ":
-            return trim(s[:-1])
-        return s    
     seen = set()
     #Write new file
     with open(filename, "w") as f:
@@ -185,19 +186,7 @@ def write_reference_pdb(filename="out.pdb", reference=REFERENCE_DIR+"6vxx.pdb"):
     filename = REFERENCE_DIR+filename
     #Read the reference pdb file
     with open(reference) as f:
-        ref = [line for line in f]
-
-    def trim(s):
-        '''Takes in a string and returns it without trailing or leading whitespace
-
-        Args:
-            s (str): String
-        '''
-        if s[0] == " ":
-            return trim(s[1:])
-        if s[-1] == " ":
-            return trim(s[:-1])
-        return s    
+        ref = [line for line in f]    
 
     #Write new file
     with open(filename, "w") as f:
@@ -222,7 +211,6 @@ def run():
         '''Render the index page
         '''  
         #Check for colour setting
-        # print(request.args.get("colour"))
         colour = request.args.get("colour")
         return_path = request.args.get("return_path")
         if colour:
@@ -242,7 +230,6 @@ def run():
     def viewer_home():
         lin_type1 = request.args.get("lin_type1")
         lineage1 = request.args.get("lineage1")
-        print("|", lin_type1, "|", lineage1)
         if lin_type1 is not None and lineage1 is not None:
             return render_template("viewer.html",  lin_type1=lin_type1, lineage1=lineage1)
         else:

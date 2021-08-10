@@ -132,3 +132,5 @@ dmypy.json
 *.pdb
 !data/reference-proteins/6vxx.pdb
 data/MUTATIONS-Spike.pkl.gz
+data/db
+data/db-journal
