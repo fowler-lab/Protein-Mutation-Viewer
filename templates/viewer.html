@@ -3,7 +3,7 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
     <link rel="stylesheet" type="text/css" href="/molstar-mutation/build/viewer/molstar.css" />
     <script type="text/javascript" src="/molstar-mutation/build/viewer/molstar.js"></script>
-    {% if pdb is not defined %}
+    {% if pdb is not defined or pdb == "all" %}
         {% if lineage is defined %}
             <h3>No data found for lineage {{lineage}}</h3>
             <p>Search for another: </p>
@@ -28,13 +28,20 @@
                 return false;
             }
         </script>
-    {% else %}
+        <br>
+        <br>
+    {% endif %}
+    {% if pdb is defined %}
         {% block heading %}
-        <h3 id="title">{{type|title}} Lineage: {{pdb}}</h3>
+        {% if pdb != "all" %}
+            <h3 id="title">{{type|title}} Lineage: {{pdb}}</h3>
+        {% else %}
+            <h3 id="title">All mutations</h3>
+        {% endif %}
         <div class="d-flex">
             <div>
                 <p>Relative mutation is a normalised measure of how many mutations occured at a given amino acid index</p>
-                <a href="{{url_for('search', lin_type1=type, lineage1=pdb)}}">Add to comparison</a>
+                {% if pdb != "all" %}<a href="{{url_for('search', lin_type1=type, lineage1=pdb)}}">Add to comparison</a>{% endif %}
             </div>
             <div style="width: 10rem;"></div>
             <div>
@@ -77,6 +84,7 @@
         {% endblock %}
         {% block viewer %}
         <div class="d-flex">
+            {% if pdb != "all" %}
             <div style="width:100rem; float: left; height: 750px; overflow-y: scroll; overflow-x: hidden;">
                 <table class="table" style="width: 20rem; position: relative;" id="mutation-table">
                     <thead>
@@ -163,13 +171,14 @@
                     });
                 </script>
             </div>
+            {% endif %}
             <div>
                 <div>
                     <div>
                         <style>
                             #app {
                                 position:relative;
-                                width: 60rem;
+                                width: {% if pdb!="all" %}60rem{% else %}81rem{% endif %};
                                 height: 750px;
                                 float: right;
                                 resize: both;
@@ -178,6 +187,11 @@
                         </style>
                         <div id="app" onmouseup="resize_check();" onmouseover="being_resized=false;" onmousemove="being_resized=false;"></div>
                         <script type="text/javascript">
+                            function getParam(name, regex) {
+                                var r = new RegExp(name + '=' + '(' + regex + ')[&]?', 'i');
+                                return decodeURIComponent(((window.location.search || '').match(r) || [])[1] || '');
+                            }
+
                             var being_resized;
                             var viewer;
 
@@ -193,10 +207,21 @@
                                 //Read from the cookies to find the colour
                                 var ca = document.cookie.split(";");
                                 var cookie;
+                                window.viewer_colour = "";
                                 for(var i=0;i<ca.length;i++){
-                                    if(ca[i].trim().split("=")[0] == "colour"){
+                                    if(ca[i].trim().split("=")[0] == "colour" && consent_given === true){
                                         window.viewer_colour = ca[i].split("=")[1];
                                     }
+                                }
+                                if(window.viewer_colour === ""){
+                                    //The colour cookie has not been set, so use default
+                                    window.viewer_colour = "default";
+                                }
+
+                                //Check for GET parameter for colour
+                                var get_colour = getParam('colour', '[^&]+').trim().toLowerCase();
+                                if(["default", "red", "green", "blue"].includes(get_colour)){
+                                    window.viewer_colour = get_colour;
                                 }
 
                                 var legend = document.getElementById("legend");
@@ -289,6 +314,7 @@
         {% endblock %}
         <br>
         <br>
+        {% if pdb != "all" %}
         <div>
             <div id="mutations"></div>
             <script>
@@ -386,5 +412,6 @@
                 }
             </script>
         </div>
+        {% endif %}
     {% endif %}
 {% endblock %}

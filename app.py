@@ -212,16 +212,39 @@ def run():
         '''  
         #Check for colour setting
         colour = request.args.get("colour")
+        consent = request.args.get("consent")
         return_path = request.args.get("return_path")
-        if colour:
-            resp = make_response(render_template("set_colour.html", return_path=return_path))
-            if colour == "1":
-                value = "default"
-            elif colour in ["default", "red", "green", "blue"]:
-                value = colour
-            else:
-                return render_template('400.html'), 400
-            resp.set_cookie("colour", value=value, samesite="strict", path="/", max_age=60*60*24*365)
+        if colour or consent:
+            resp = make_response(render_template("set_cookie.html", return_path=return_path))
+            if colour:
+                #Get the value of the colour
+                if colour == "1":
+                    value = "default"
+                elif colour in ["default", "red", "green", "blue"]:
+                    value = colour
+                else:
+                    return render_template('400.html'), 400
+                #Check for consent
+                if request.cookies.get("cookie_consent") == "yes":
+                    resp.set_cookie("colour", value=value, samesite="strict", path="/", max_age=60*60*24*365)
+                else:
+                    #Consent has not been given, so add a GET parameter for the return path showing colour
+                    #This will not persist between pages, but will recolour the current viewer
+                    if "?" in return_path:
+                        #There are already GET parameters, so append
+                        return_path = return_path + "&colour=" + value
+                    else:
+                        #No GET parameters, so add appropriately
+                        return_path = return_path + "?colour=" + value
+                    return render_template("set_cookie.html", return_path=return_path)
+            if consent:
+                if consent == "1":
+                    value = "yes"
+                elif consent == "0":
+                    value = "no"
+                else:
+                    render_template('400.html'), 400
+                resp.set_cookie("cookie_consent", value=value, samesite="strict", path="/", max_age=60*60*24*365*10)
             return resp
         else:
             return render_template("index.html")
@@ -233,7 +256,10 @@ def run():
         if lin_type1 is not None and lineage1 is not None:
             return render_template("viewer.html",  lin_type1=lin_type1, lineage1=lineage1)
         else:
-            return render_template("viewer.html")
+            if not os.path.exists("data/mutations/all.pdb"):
+                mutation_counts, references, mutations = get_muatation_counts(DATASET["mutation"])
+                write_new_pdb(mutation_counts, filename="all.pdb", find_missing=True)
+            return render_template("viewer.html", pdb="all")
     
     @app.route("/viewer/covid/spike/<lin_type>")
     def viewer_lineage_home(lin_type):

@@ -1,17 +1,25 @@
 <!DOCTYPE html>
 <head>
     <title>Protein Mutations</title>
-    <!-- Cookie logic for colours -->
+    <!-- Cookie logic -->
     <script>
-      var check = false;
+      var colour_check = false;
+      var consent_check = false;
+      var consent_given = false;
       var ca = document.cookie.split(";");
       for(var i=0;i<ca.length;i++){
-        if(ca[i].trim().split("=")[0] == "colour"){
-          check = true;
+        if(ca[i].trim().split("=")[0] === "colour"){
+          colour_check = true;
+        }
+        if(ca[i].trim().split("=")[0] === "cookie_consent"){
+          consent_check = true;
+          if(ca[i].trim().split("=")[1] === "yes"){
+            consent_given = true;
+          }
+
         }
       }
-      if(check !== true){
-        console.log(document.cookie);
+      if(consent_given === true && colour_check !== true){
         //The colour cookie has not been set, so set it to default
         window.location.assign("{{url_for('index', colour=1, return_path=request.path, _external=True)|safe}}");
       }
@@ -60,6 +68,21 @@
           return false;
         }
       </script>
+      <!-- Cookie consent -->
+      <div id="cookie-consent"></div>
+      <script>
+        if(consent_check === false){
+          //Consent for non-essential cookies has not been given, so add the cookie banner
+          var cookie_html = "<div class='d-flex container' style='background: rgba(240, 240, 240, 1);padding-top: 5rem;'>";
+          cookie_html += "<p>This website uses cookies for storing the colour scheme for the viewer. Without this consent, viewer colour schemes will not be stored between pages.</p>";
+          cookie_html += "<div style='padding-left: 25px;'></div>";
+          cookie_html += "<a href='{{url_for("index", consent=1, return_path=request.path, _external=True)|safe}}'>Agree</a>";
+          cookie_html += "<div style='padding-left: 25px;'></div>";
+          cookie_html += "<a href='{{url_for("index", consent=0, return_path=request.path, _external=True)|safe}}'>Disagree</a>";
+          cookie_html += "</div>";
+          document.getElementById("cookie-consent").innerHTML = cookie_html;
+        }
+      </script>
       <div class="container" style="padding-top: 100px;">
           <!-- Main block -->
           {% block main %}{% endblock %}
@@ -70,7 +93,15 @@
 
       <footer>
         <div class="container text-center">
-          Protein Mutations Viewer | Viewer based on <a href="https://molstar.org/">Mol*</a>
+          Protein Mutations Viewer | Viewer based on <a href="https://molstar.org/">Mol*</a> <div style="display: inline-block;" id="add-cookies"></div>
+          <script>
+            if(consent_check === true && consent_given === false){
+              // The user has declined storing the colour cookie, so include an option to enable at the bottom
+              var html = "| <a href='{{url_for("index", consent=1, return_path=request.path, _external=True)|safe}}'>Consent to storing colour cookie</a>";
+              document.getElementById("add-cookies").innerHTML = html;
+            }
+          </script>
         </div>
       </footer>
+      <br>
 </body>
