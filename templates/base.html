@@ -73,27 +73,33 @@
       <script>
         if(consent_check === false){
           //Consent for non-essential cookies has not been given, so add the cookie banner
-          var cookie_html = "<div class='d-flex container' style='background: rgba(240, 240, 240, 1);padding-top: 5rem;'>";
-          cookie_html += "<p>This website uses cookies for storing the colour scheme for the viewer. Without this consent, viewer colour schemes will not be stored between pages.</p>";
+          var cookie_html = "<div class='container' style='background: rgba(240, 240, 240, 1);padding-top: 5rem;'>";
+          cookie_html += "<p>This website uses cookies for storing the colour scheme for the viewer. Without this consent, viewer colour schemes will not be stored between pages. No cookies are used for marketing or analytics. Other necessary cookies may be used to track things like this consent.</p>";
+          // cookie_html += "<div style='padding-left: 25px;'></div>";
+          cookie_html += "<div class='d-flex' style='padding-bottom: 3px;'><a href='{{url_for("index", consent=1, return_path=request.path, _external=True)|safe}}'>Accecpt colour cookie</a>";
           cookie_html += "<div style='padding-left: 25px;'></div>";
-          cookie_html += "<a href='{{url_for("index", consent=1, return_path=request.path, _external=True)|safe}}'>Agree</a>";
-          cookie_html += "<div style='padding-left: 25px;'></div>";
-          cookie_html += "<a href='{{url_for("index", consent=0, return_path=request.path, _external=True)|safe}}'>Disagree</a>";
-          cookie_html += "</div>";
+          cookie_html += "<a href='{{url_for("index", consent=0, return_path=request.path, _external=True)|safe}}'>Reject colour cookie</a>";
+          cookie_html += "</div></div>";
           document.getElementById("cookie-consent").innerHTML = cookie_html;
         }
       </script>
-      <div class="container" style="padding-top: 100px;">
+      <div id="main-container" class="container" style="padding-top: 100px;">
           <!-- Main block -->
           {% block main %}{% endblock %}
       </div>
+      <script>
+        if(consent_check === false){
+          //Remove the extra padding on top of the main block as there is padding on the cookie banner
+          document.getElementById("main-container").style["padding-top"] = "10px";
+        }
+      </script>
       <br>
       <br>
       <br>
 
       <footer>
         <div class="container text-center">
-          Protein Mutations Viewer | Viewer based on <a href="https://molstar.org/">Mol*</a> <div style="display: inline-block;" id="add-cookies"></div>
+          Protein Mutations Viewer | Viewer based on <a href="https://molstar.org/">Mol*</a> | <a href="{{url_for('cookies')|safe}}">Cookie policy</a> <div style="display: inline-block;" id="add-cookies"></div>
           <script>
             if(consent_check === true && consent_given === false){
               // The user has declined storing the colour cookie, so include an option to enable at the bottom

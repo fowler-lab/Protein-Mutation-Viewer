@@ -208,7 +208,7 @@ def run():
 
     @app.route("/")
     def index():
-        '''Render the index page
+        '''Render the index page. Also used to deal with cookie logic
         '''  
         #Check for colour setting
         colour = request.args.get("colour")
@@ -244,10 +244,17 @@ def run():
                     value = "no"
                 else:
                     render_template('400.html'), 400
-                resp.set_cookie("cookie_consent", value=value, samesite="strict", path="/", max_age=60*60*24*365*10)
+                resp.set_cookie("cookie_consent", value=value, samesite="strict", path="/", max_age=60*60*24*365)
             return resp
         else:
             return render_template("index.html")
+    @app.route("/cookies")
+    def cookies():
+        '''Render an info page about the uses of cookies
+        '''        
+        cookie_consent = request.cookies.get("cookie_consent")
+        colour = request.cookies.get("colour")
+        return render_template("cookie_policy.html", cookie_consent=cookie_consent, colour=colour)
     
     @app.route("/viewer/covid/spike")
     def viewer_home():
