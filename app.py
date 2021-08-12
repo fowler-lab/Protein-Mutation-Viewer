@@ -8,7 +8,7 @@ from flask import Flask, redirect, render_template, url_for, request, make_respo
 
 REFERENCE_DIR = "data/reference-proteins/"
 MUTATIONS_DIR = "data/mutations/"
-DATASET = pd.read_pickle("data/MUTATIONS-Spike.pkl.gz")
+DATASET = pd.read_pickle("data/MUTATIONS-Spike-Fixed.pkl.gz")
 
 class MissingDataException(Exception):
     '''Exception class used to show when there was no data available for a given lineage
@@ -23,7 +23,7 @@ def get_muatation_counts(mutations, threshold=5):
         threshold (int, optional): Threshold to consider a mutation. Defaults to 5
 
     Returns:
-        (dict, dict): Tuple of dictionaries mapping mutation_index->normalised_count and mutation_index->reference_amino_acid
+        (dict, dict, dict): Tuple of dictionaries mapping mutation_index->normalised_count and mutation_index->reference_amino_acid, mutation_index->{mutation->frequency}
     '''    
     if len(mutations) == 0:
         raise MissingDataException("No data given")
@@ -45,7 +45,6 @@ def get_muatation_counts(mutations, threshold=5):
 
     def normalise(count, max_count):
         return round(count/max_count, 2)
-        # return round(0.75* (count / max_count)**2 + 0.25, 2)
 
     mutation_counts = {index: normalise(mutation_counts[index], max_count) for index in mutation_counts.keys() if mutation_counts[index] >= threshold}
     #Ignore all values which have normalised counts of 0
