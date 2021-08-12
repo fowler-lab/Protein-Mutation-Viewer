@@ -15,6 +15,7 @@
                     <th>Name</th>
                     <th>Expiry</th>
                     <th>Description</th>
+                    <th>Necessary</th>
                     <th>Set</th>
                     <th>Value</th>
                 </tr>
@@ -24,6 +25,7 @@
                     <td>cookie_consent</td>
                     <td>365 days</td>
                     <td>Tracks whether a user has either accepted or rejected consent to other cookies.</td>
+                    <td>&#10004;</td>
                     <td>{% if cookie_consent != None %}&#10004;{% else %}&#9747;{% endif %}</td>
                     <td>{{cookie_consent|default('-', True)}}</td>
 
@@ -32,6 +34,7 @@
                     <td>colour</td>
                     <td>365 days</td>
                     <td>Holds the name of the currently selected viewer theme. Used for retaining the same theme between pages.</td>
+                    <td>&#9747;</td>
                     <td>{% if colour != None %}&#10004;{% else %}&#9747;{% endif %}</td>
                     <td>{{colour|default('-', True)}}</td>
                 </tr>

@@ -40,8 +40,12 @@
         {% endif %}
         <div class="d-flex">
             <div>
+                {% if pdb != "all" %}
                 <p>Relative mutation is a normalised measure of how many mutations occured at a given amino acid index</p>
-                {% if pdb != "all" %}<a href="{{url_for('search', lin_type1=type, lineage1=pdb)}}">Add to comparison</a>{% endif %}
+                <a href="{{url_for('search', lin_type1=type, lineage1=pdb)}}">Add to comparison</a>
+                {% else %}
+                <div style="width: 50rem;"><p>Frequency of mutations is shown using relative mutation which is a normalised measure of how many mutations occured at a given amino acid index.</p></div>
+                {% endif %}
             </div>
             <div style="width: 10rem;"></div>
             <div>
