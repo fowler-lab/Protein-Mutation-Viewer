@@ -1,13 +1,14 @@
 import os.path
 from collections import Counter, defaultdict
 from os import mkdir
+import re
 
 import pandas as pd
-from flask import Flask, redirect, render_template, url_for, request
+from flask import Flask, redirect, render_template, url_for, request, make_response
 
 REFERENCE_DIR = "data/reference-proteins/"
 MUTATIONS_DIR = "data/mutations/"
-DATASET = pd.read_pickle("data/MUTATIONS-Spike.pkl.gz")
+DATASET = pd.read_pickle("data/MUTATIONS-Spike-Fixed.pkl.gz")
 
 class MissingDataException(Exception):
     '''Exception class used to show when there was no data available for a given lineage
@@ -22,7 +23,7 @@ def get_muatation_counts(mutations, threshold=5):
         threshold (int, optional): Threshold to consider a mutation. Defaults to 5
 
     Returns:
-        (dict, dict): Tuple of dictionaries mapping mutation_index->normalised_count and mutation_index->reference_amino_acid
+        (dict, dict, dict): Tuple of dictionaries mapping mutation_index->normalised_count and mutation_index->reference_amino_acid, mutation_index->{mutation->frequency}
     '''    
     if len(mutations) == 0:
         raise MissingDataException("No data given")
@@ -44,7 +45,6 @@ def get_muatation_counts(mutations, threshold=5):
 
     def normalise(count, max_count):
         return round(count/max_count, 2)
-        # return round(0.75* (count / max_count)**2 + 0.25, 2)
 
     mutation_counts = {index: normalise(mutation_counts[index], max_count) for index in mutation_counts.keys() if mutation_counts[index] >= threshold}
     #Ignore all values which have normalised counts of 0
@@ -68,31 +68,37 @@ def get_counts_by_lineage(lineage="pango"):
         return {}
     return Counter([i for i in DATASET[lineage] if not pd.isnull(i)])
 
-def write_new_pdb(mutation_counts, filename="out.pdb", reference=REFERENCE_DIR+"6vxx.pdb"):
+def trim(s):
+    '''Takes in a string and returns it without trailing or leading whitespace
+
+    Args:
+        s (str): String
+    '''
+    if s[0] == " ":
+        return trim(s[1:])
+    if s[-1] == " ":
+        return trim(s[:-1])
+    return s
+
+def write_new_pdb(mutation_counts, filename="out.pdb", reference=REFERENCE_DIR+"6vxx.pdb", find_missing=False):
     '''Writes a new pdb file with the occupancy field altered appropriately for the mutation_counts
 
     Args:
         mutation_counts (dict): Dictionary mapping mutation_index->normalised_count
         filename (str, optional): Output filename for the resultant pdb file. Defaults to "out.pdb".
         reference (str, optional): Filename of the reference pdb file. Defaults to REFERENCE_DIR+"6vxx.pdb".
+        find_missing (bool, optional): Boolean to determine whether this should return a list of 
+                                        amino acid indices which were not added to the file (due to the reference 
+                                        missing them)
+    Returns:
+        list: List of amino acid indices where the reference was not updated. Only returns if find_missing is set to True.
     '''    
     filename = MUTATIONS_DIR+filename
     #Read the reference pdb file
     with open(reference) as f:
         ref = [line for line in f]
 
-    def trim(s):
-        '''Takes in a string and returns it without trailing or leading whitespace
-
-        Args:
-            s (str): String
-        '''
-        if s[0] == " ":
-            return trim(s[1:])
-        if s[-1] == " ":
-            return trim(s[:-1])
-        return s    
-
+    seen = set()
     #Write new file
     with open(filename, "w") as f:
         for line in ref:
@@ -103,12 +109,16 @@ def write_new_pdb(mutation_counts, filename="out.pdb", reference=REFERENCE_DIR+"
                 if aa_index in mutation_counts.keys():
                     #Make the occupancy the normalised count if mutated at this atom
                     line[56:60] = list(str(mutation_counts[int(trim(''.join(line[22:26])))]))
+                    seen.add(int(trim(''.join(line[22:26]))))
                 else:
                     #Default to 0 if there were no mutations
                     continue
-                    line[56:60] = list("0.00")
                 line = ''.join(line)
             f.write(line)
+    if find_missing:
+        return sorted(list(set(mutation_counts.keys()).difference(seen)))
+    else:
+        return None
         
 def compare_mutations(mutations1, mutations2):
     '''Merge two dictionaries of mutations together using the cantor pairing function to give a single value.
@@ -175,19 +185,7 @@ def write_reference_pdb(filename="out.pdb", reference=REFERENCE_DIR+"6vxx.pdb"):
     filename = REFERENCE_DIR+filename
     #Read the reference pdb file
     with open(reference) as f:
-        ref = [line for line in f]
-
-    def trim(s):
-        '''Takes in a string and returns it without trailing or leading whitespace
-
-        Args:
-            s (str): String
-        '''
-        if s[0] == " ":
-            return trim(s[1:])
-        if s[-1] == " ":
-            return trim(s[:-1])
-        return s    
+        ref = [line for line in f]    
 
     #Write new file
     with open(filename, "w") as f:
@@ -209,19 +207,65 @@ def run():
 
     @app.route("/")
     def index():
-        '''Render the index page
+        '''Render the index page. Also used to deal with cookie logic
         '''  
-        return render_template("index.html")
+        #Check for colour setting
+        colour = request.args.get("colour")
+        consent = request.args.get("consent")
+        return_path = request.args.get("return_path")
+        if colour or consent:
+            resp = make_response(render_template("set_cookie.html", return_path=return_path))
+            if colour:
+                #Get the value of the colour
+                if colour == "1":
+                    value = "default"
+                elif colour in ["default", "red", "green", "blue"]:
+                    value = colour
+                else:
+                    return render_template('400.html'), 400
+                #Check for consent
+                if request.cookies.get("cookie_consent") == "yes":
+                    resp.set_cookie("colour", value=value, samesite="strict", path="/", max_age=60*60*24*365)
+                else:
+                    #Consent has not been given, so add a GET parameter for the return path showing colour
+                    #This will not persist between pages, but will recolour the current viewer
+                    if "?" in return_path:
+                        #There are already GET parameters, so append
+                        return_path = return_path + "&colour=" + value
+                    else:
+                        #No GET parameters, so add appropriately
+                        return_path = return_path + "?colour=" + value
+                    return render_template("set_cookie.html", return_path=return_path)
+            if consent:
+                if consent == "1":
+                    value = "yes"
+                elif consent == "0":
+                    value = "no"
+                else:
+                    render_template('400.html'), 400
+                resp.set_cookie("cookie_consent", value=value, samesite="strict", path="/", max_age=60*60*24*365)
+            return resp
+        else:
+            return render_template("index.html")
+    @app.route("/cookies")
+    def cookies():
+        '''Render an info page about the uses of cookies
+        '''        
+        cookie_consent = request.cookies.get("cookie_consent")
+        colour = request.cookies.get("colour")
+        return render_template("cookie_policy.html", cookie_consent=cookie_consent, colour=colour)
     
     @app.route("/viewer/covid/spike")
     def viewer_home():
         lin_type1 = request.args.get("lin_type1")
         lineage1 = request.args.get("lineage1")
-        print("|", lin_type1, "|", lineage1)
         if lin_type1 is not None and lineage1 is not None:
             return render_template("viewer.html",  lin_type1=lin_type1, lineage1=lineage1)
         else:
-            return render_template("viewer.html")
+            if not os.path.exists("data/mutations/all.pdb"):
+                mutation_counts, references, mutations = get_muatation_counts(DATASET["mutation"])
+                write_new_pdb(mutation_counts, filename="all.pdb", find_missing=True)
+            return render_template("viewer.html", pdb="all")
     
     @app.route("/viewer/covid/spike/<lin_type>")
     def viewer_lineage_home(lin_type):
@@ -250,13 +294,14 @@ def run():
                 mutation_counts, references, mutations = get_muatation_counts(DATASET[DATASET["pango_lineage"] == lineage]["mutation"])
             else:
                 mutation_counts, references, mutations = get_muatation_counts(DATASET[DATASET["scorpio_call"] == lineage]["mutation"])
-            write_new_pdb(mutation_counts, filename=lineage+".pdb")
+            missing = write_new_pdb(mutation_counts, filename=lineage+".pdb", find_missing=True)
         except MissingDataException:
             #This mutation has no data
             return render_template('viewer.html', lineage=lineage)
         if not os.path.isfile(REFERENCE_DIR+"6vxx-blank.pdb"):
             write_reference_pdb(filename="6vxx-blank.pdb")
-        return render_template("viewer.html", pdb=lineage, mutation_counts=mutation_counts, references=references, mutations=mutations, type=lin_type)
+        return render_template("viewer.html", pdb=lineage, mutation_counts=mutation_counts, references=references, 
+                                mutations=mutations, type=lin_type, missing=missing)
     
     @app.route("/viewer/compare/covid/spike/")
     def comparison():
@@ -290,10 +335,11 @@ def run():
             #Merge them
             mutation_counts = compare_mutations(mutation_counts1, mutation_counts2)
             mutations = merge_mutations(mutations1, mutations2)
-            write_new_pdb(mutation_counts, filename=f"{lineage1}_{lineage2}.pdb")
+            missing = write_new_pdb(mutation_counts, filename=f"{lineage1}_{lineage2}.pdb", find_missing=True)
             return render_template('compare_viewer.html', mutation_counts=mutation_counts, lin_type1=lin_type1, lineage1=lineage1,
                                     lin_type2=lin_type2, lineage2=lineage2, references1=references1, references2=references2,
-                                    mutation_counts1=mutation_counts1, mutation_counts2=mutation_counts2, mutations=mutations)
+                                    mutation_counts1=mutation_counts1, mutation_counts2=mutation_counts2, mutations=mutations,
+                                    missing=missing)
         else:
             return render_template('comparison.html')
         

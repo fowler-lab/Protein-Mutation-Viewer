@@ -10,7 +10,7 @@
     <link rel="stylesheet" type="text/css" href="/molstar-mutation/build/viewer/molstar.css" />
     <script type="text/javascript" src="/molstar-mutation/build/viewer/molstar.js"></script>
     {% block heading %}
-        <h3>Comparison of lineages</h3>
+        <h3 id="title">Comparison of lineages</h3>
         <div class="d-flex">
             <div style="width:100%;">
                 <br>
@@ -74,6 +74,7 @@
                         </tr>
                     </thead>
                     <tbody style="margin-top: 25px">
+                        {% set i = namespace(value=0) %}
                         {% for index in mutation_counts.keys()|sort %}
                             <tr 
                                 id="{{index}}" 
@@ -82,14 +83,15 @@
                                     {% elif index in references2.keys() %}
                                         {{references2[index]}}
                                     {% endif %}" 
-                                onclick="getMutants({{index}});" 
-                                onmouseover="this.style['background'] = 'rgba(200, 200, 200, 1)'" 
-                                onmouseleave="this.style['background'] = 'rgba(255, 255, 255, 1)'"
+                                onclick="{% if index not in missing %}mouseclickTable({{i.value}}, {{index}});{% else %}mouseclickTable(-1, {{index}});{% endif %}getMutants({{index}});this.style['background'] = 'rgba(200, 200, 200, 1)';this.onmouseleave=function(){ {% if index not in missing %}mouseleaveTable({{i.value}});{% endif %} };" 
+                                onmouseover="{% if index not in missing %}mouseoverTable({{i.value}});{% endif %}this.style['background'] = 'rgba(200, 200, 200, 1)';" 
+                                onmouseleave="{% if index not in missing %}mouseleaveTable({{i.value}});{% endif %}this.style['background'] = 'rgba(255, 255, 255, 1)'"
                                 title="Click to view amino acid mutations"
                             >
-                                <td>{% if index in references1.keys() %}{{references1[index]}}{% elif index in references2.keys() %}{{references2[index]}}{% endif %}{{index}}</td>
+                                <td>{% if index in references1.keys() %}{{references1[index]}}{% elif index in references2.keys() %}{{references2[index]}}{% endif %}{{index}}{% if index in missing %}*{% endif %}</td>
                                 <td>{{mutation_counts1[index]|default(0, True)}}</td>
                                 <td>{{mutation_counts2[index]|default(0, True)}}</td>
+                                {% if index not in missing %}{% set i.value = i.value + 1 %}{% endif %}
                             </tr>
                         {% endfor %}
                     </tbody>
@@ -126,7 +128,12 @@
                                 }
                             }
                             else{
-                                v = parseInt(v.substr(1), 10);
+                                if(v.includes("*")){
+                                    v = parseInt(v.substr(1, v.length-2), 10);
+                                }
+                                else{
+                                    v = parseInt(v.substr(1), 10);
+                                }
                             }
                             return v;
                         }
@@ -174,12 +181,12 @@
                             var viewer;
 
                             async function load_structure() {
-                                viewer.plugin.is_reference = true;
-                                await viewer.loadStructureFromUrl("/data/reference-proteins/6vxx-blank.pdb", "pdb", false);
                                 viewer.plugin.is_reference = false;
                                 viewer.plugin.is_comparison = true;
                                 await viewer.loadStructureFromUrl("/data/mutations/{{lineage1}}_{{lineage2}}.pdb", "pdb", false);
-                            }
+                                viewer.plugin.is_comparison = false;
+                                viewer.plugin.is_reference = true;
+                                await viewer.loadStructureFromUrl("/data/reference-proteins/6vxx-blank.pdb", "pdb", false);                            }
 
                             window.onload = async function(){
                                 viewer = new molstar.Viewer('app', {
@@ -221,6 +228,13 @@
                 </div>
             </div>
         </div>
+        <div>
+            {% if missing|length > 0 %}
+                <small>* This amino acid is missing in the reference model, so no mutations are shown</small>
+            {% endif %}
+        </div>
+        <br>
+        <div id="clear-button"></div>
         {% endblock %}
         <br>
         <br>
@@ -256,6 +270,68 @@
                     html = html + "</table>";
                     document.getElementById("mutations").innerHTML = html;
                     document.getElementById("mutations").scrollIntoView();
+                }
+                function mouseoverTable(index){
+                    if(document.querySelectorAll("[title='[Structure] {{lineage1}}_{{lineage2}}.pdb']").length > 0){
+                        var elem = document.querySelectorAll('[data-seqid="'+index+'"]')[0];
+                        var event = new MouseEvent('mousemove', {
+                                                    'bubbles': true,
+                                                    'cancelable': true
+                                                    });
+                        elem.dispatchEvent(event);
+                    }
+                }
+                function mouseleaveTable(index){
+                    if(document.querySelectorAll("[title='[Structure] {{lineage1}}_{{lineage2}}.pdb']").length > 0){
+                        var elem = document.querySelectorAll('[data-seqid="'+index+'"]')[0];
+                        var event = new MouseEvent('mouseout', {
+                                                    'bubbles': true,
+                                                    'cancelable': true
+                                                    });
+                        elem.dispatchEvent(event);
+                    }
+                }
+                function mouseclickTable(index, row_id){
+                    //Check if another row already has focus, and clear as required
+                    if(window.current_row !== undefined){
+                        document.getElementById(window.current_row).onmouseleave = function(){
+                            this.style['background'] = 'rgba(255, 255, 255, 1)';
+                            mouseleaveTable(window.current_index);
+                        }
+                        document.getElementById(window.current_row).style['background'] = 'rgba(255, 255, 255, 1)';
+                        //Clear the focus on an amino acid by clicking the sequence number
+                        var elem = document.querySelectorAll('[class="msp-sequence-number"]')[0];
+                        var event = new MouseEvent('mousedown', {'bubbles': true, 'cancelable': true});
+                        elem.dispatchEvent(event);
+                    }
+                    //Focus on the given amino acid
+                    if(document.querySelectorAll("[title='[Structure] {{lineage1}}_{{lineage2}}.pdb']").length > 0 && index >= 0){
+                        var elem = document.querySelectorAll('[data-seqid="'+index+'"]')[0];
+                        var event = new MouseEvent('mousedown', {
+                                                    'bubbles': true,
+                                                    'cancelable': true
+                                                    });
+                        elem.dispatchEvent(event);
+                    }
+                    document.getElementById("clear-button").innerHTML = "<button class='btn btn-outline-success' onclick='clearFocus("+row_id+", "+index+");'>Clear selection</button>";
+                    window.current_row = row_id
+                    window.current_index = index;
+                }
+                function clearFocus(id, index){
+                    //Clear the focus on an amino acid by clicking the sequence number
+                    var elem = document.querySelectorAll('[class="msp-sequence-number"]')[0];
+                    var event = new MouseEvent('mousedown', {'bubbles': true, 'cancelable': true});
+                    elem.dispatchEvent(event);
+                    //Remove this button and the table
+                    document.getElementById("clear-button").innerHTML = "";
+                    document.getElementById("mutations").innerHTML = "";
+                    //Revert the row to the usual formatting
+                    document.getElementById(id).onmouseleave = function(){
+                        this.style['background'] = 'rgba(255, 255, 255, 1)';
+                        mouseleaveTable(index);
+                    }
+                    document.getElementById(id).style['background'] = 'rgba(255, 255, 255, 1)';
+                    document.getElementById("title").scrollIntoView();
                 }
             </script>
         </div>

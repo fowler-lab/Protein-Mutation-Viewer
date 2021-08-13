@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block main %}
+    <div>
+        <h3>Cookies</h3>
+        <p>
+            Cookies are not used for marketing or analytics. Necessary cookies include storing cookie consent. 
+            The only use for optional cookies is storing colour themes for the viewer.
+        </p>
+        <br>
+        <h4>List of cookies and their purposes</h4>
+        <br>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Expiry</th>
+                    <th>Description</th>
+                    <th>Necessary</th>
+                    <th>Set</th>
+                    <th>Value</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>cookie_consent</td>
+                    <td>365 days</td>
+                    <td>Tracks whether a user has either accepted or rejected consent to other cookies.</td>
+                    <td>&#10004;</td>
+                    <td>{% if cookie_consent != None %}&#10004;{% else %}&#9747;{% endif %}</td>
+                    <td>{{cookie_consent|default('-', True)}}</td>
+
+                </tr>
+                <tr>
+                    <td>colour</td>
+                    <td>365 days</td>
+                    <td>Holds the name of the currently selected viewer theme. Used for retaining the same theme between pages.</td>
+                    <td>&#9747;</td>
+                    <td>{% if colour != None %}&#10004;{% else %}&#9747;{% endif %}</td>
+                    <td>{{colour|default('-', True)}}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+{% endblock %}
