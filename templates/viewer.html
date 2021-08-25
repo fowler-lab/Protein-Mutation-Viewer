@@ -4,6 +4,7 @@
     <link rel="stylesheet" type="text/css" href="/molstar-mutation/build/viewer/molstar.css" />
     <script type="text/javascript" src="/molstar-mutation/build/viewer/molstar.js"></script>
     {% if pdb is not defined or pdb == "all" %}
+        {# Header section for either no pdb or all #}
         {% if lineage is defined %}
             <h3>No data found for lineage {{lineage}}</h3>
             <p>Search for another: </p>
@@ -116,6 +117,7 @@
                     </tbody>
                 </table>
                 <script>
+                    {# Function to sort the relative mutation table onclick of the headings #}
                     //  sortTable(f,n)
                     //  f : 1 ascending order, -1 descending order
                     //  n : n-th child(<td>) of <tr>
