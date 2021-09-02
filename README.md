@@ -91,4 +91,11 @@ This creates a `div` with the id of `app`, which has event listeners for `mouseu
 
 When the window loads, a new viewer is instanciated, passing the `div` id, as well as a variety of options.
 
-`load_structure()` is an asynchronous function for the purpose of loading the structure. Initially, it sets the colour scheme by setting `viewer.plugin.colour`, and then denoting that the first structure is not a reference protein with `viewer.plugin.is_reference`. The viewer then loads the mutation structure (which only has the points of mutation). The viewer is then updated to say that the next structure is a reference with `viewer.plugin.is_reference = true;`, and then the blank structure is loaded. This is the reference `6VXX` PDB, but with the occupancy field se to 0 for all values. This results in the mutation points being loaded and displayed as spacefill with occupancy based colouring, and the reference structure being loaded as an all white protein in cartoon representation. 
+`load_structure()` is an asynchronous function for the purpose of loading the structure. Initially, it sets the colour scheme by setting `viewer.plugin.colour`, and then denoting that the first structure is not a reference protein with `viewer.plugin.is_reference`. The viewer then loads the mutation structure (which only has the points of mutation). The viewer is then updated to say that the next structure is a reference with `viewer.plugin.is_reference = true;`, and then the blank structure is loaded. This is the reference `6VXX` PDB, but with the occupancy field set to 0 for all values. This results in the mutation points being loaded and displayed as spacefill with occupancy based colouring, and the reference structure being loaded as an all white protein in cartoon representation. 
+
+#### Comparisons
+Comparisons can be handled, using the cantor pairing function to create a single PDB file with 2 sets of mutations stored within it. To setup a viewer to show a comparison, some flags must be set:
+```
+viewer.plugin.is_comparison = true //Sets colouring to use inverse cantor pairing function
+window.is_comparison = true //Updates onhover labels to detail both mutations
+```

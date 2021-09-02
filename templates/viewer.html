@@ -102,7 +102,7 @@
                         {% set i = namespace(value=0) %}
                         {% for index in mutation_counts.keys()|sort %}
                             <tr 
-                                id="{{index}}" 
+                                id="mutations-table-{{index}}" 
                                 value="{{references[index]}}" 
                                 onclick="{% if index not in missing %}mouseclickTable({{i.value}}, {{index}});{% else %}mouseclickTable(-1, {{index}});{% endif %}getMutants({{index}});this.style['background'] = 'rgba(200, 200, 200, 1)';this.onmouseleave=function(){ {% if index not in missing %}mouseleaveTable({{i.value}});{% endif %} };" 
                                 onmouseover="{% if index not in missing %}mouseoverTable({{i.value}});{% endif %}this.style['background'] = 'rgba(200, 200, 200, 1)';" 
@@ -339,7 +339,7 @@
                 function getMutants(index){
                     // Get the information on the mutations at this amino acid index
                     counts = mutations[index];
-                    var reference = document.getElementById(index).attributes.value.nodeValue;
+                    var reference = document.getElementById("mutations-table-"+index).attributes.value.nodeValue;
                     var html = "<h5>Reference amino acid: " + reference + "</h5>";
                     html = html + "<table class='table' style='width: 30%;'><tr><th>Amino acid mutation</th><th>Frequency</th></tr>";
                     var total = counts.map(x => x[1]).reduce((x, y) => x + y, 0);
@@ -376,11 +376,11 @@
                 function mouseclickTable(index, row_id){
                     //Check if another row already has focus, and clear as required
                     if(window.current_row !== undefined){
-                        document.getElementById(window.current_row).onmouseleave = function(){
+                        document.getElementById("mutations-table-"+window.current_row).onmouseleave = function(){
                             this.style['background'] = 'rgba(255, 255, 255, 1)';
                             mouseleaveTable(window.current_index);
                         }
-                        document.getElementById(window.current_row).style['background'] = 'rgba(255, 255, 255, 1)';
+                        document.getElementById("mutations-table-"+window.current_row).style['background'] = 'rgba(255, 255, 255, 1)';
                         //Clear the focus on an amino acid by clicking the sequence number
                         var elem = document.querySelectorAll('[class="msp-sequence-number"]')[0];
                         var event = new MouseEvent('mousedown', {'bubbles': true, 'cancelable': true});
@@ -397,7 +397,6 @@
                     }
                     document.getElementById("clear-button").innerHTML = "<button class='btn btn-outline-success' onclick='clearFocus("+row_id+", "+index+");'>Clear selection</button>";
                     window.current_row = row_id
-                    window.current_index = index;
                 }
                 function clearFocus(id, index){
                     //Clear the focus on an amino acid by clicking the sequence number
@@ -408,11 +407,11 @@
                     document.getElementById("clear-button").innerHTML = "";
                     document.getElementById("mutations").innerHTML = "";
                     //Revert the row to the usual formatting
-                    document.getElementById(id).onmouseleave = function(){
+                    document.getElementById("mutations-table-"+id).onmouseleave = function(){
                         this.style['background'] = 'rgba(255, 255, 255, 1)';
-                        mouseleaveTable(index);
+                        mouseleaveTable("mutations-table-"+index);
                     }
-                    document.getElementById(id).style['background'] = 'rgba(255, 255, 255, 1)';
+                    document.getElementById("mutations-table-"+id).style['background'] = 'rgba(255, 255, 255, 1)';
                     //Scroll back up
                     document.getElementById("title").scrollIntoView();
                 }

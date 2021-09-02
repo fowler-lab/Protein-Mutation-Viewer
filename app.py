@@ -34,8 +34,8 @@ def get_muatation_counts(mutations, threshold=5):
     #Checking for SNPs first
     for mutation in mutations:
         if "del" in mutation or "ins" in mutation or "indel" in mutation:
-            mutation_counts[int(mutation.split("_")[0])] += 1
-            mutants[int(mutation.split("_")[0])].append("_".join(mutation.split("_")[1:]))
+            mutation_counts[(int(mutation.split("_")[0])-1)//3 + 1] += 1
+            mutants[(int(mutation.split("_")[0])-1)//3 + 1].append("_".join(mutation.split("_")[1:]))
         else:
             references[int(mutation[1:-1])] = str(mutation[0])
             mutation_counts[int(mutation[1:-1])] += 1
