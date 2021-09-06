@@ -5,6 +5,8 @@ import pandas
 '''
 This builds the database from the pickled dataframe
 However, it takes a long time (4+ hours)
+This is also slower then using the pickled dataframe, but presumably this is due to poor database design,
+    and sqlite instead of something more robust.
 '''
 db = sqlite3.connect("data/db")
 

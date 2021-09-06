@@ -1,3 +1,4 @@
 [submodule "molstar-mutation"]
 	path = molstar-mutation
 	url = git@github.com:JeremyWesthead/molstar-mutation
+	branch = master

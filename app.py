@@ -6,6 +6,7 @@ import re
 import pandas as pd
 from flask import Flask, redirect, render_template, url_for, request, make_response
 
+#Global definitions for important paths
 REFERENCE_DIR = "data/reference-proteins/"
 MUTATIONS_DIR = "data/mutations/"
 DATASET = pd.read_pickle("data/MUTATIONS-Spike-Fixed.pkl.gz")
@@ -33,8 +34,8 @@ def get_muatation_counts(mutations, threshold=5):
     #Checking for SNPs first
     for mutation in mutations:
         if "del" in mutation or "ins" in mutation or "indel" in mutation:
-            mutation_counts[int(mutation.split("_")[0])] += 1
-            mutants[int(mutation.split("_")[0])].append("_".join(mutation.split("_")[1:]))
+            mutation_counts[(int(mutation.split("_")[0])-1)//3 + 1] += 1
+            mutants[(int(mutation.split("_")[0])-1)//3 + 1].append("_".join(mutation.split("_")[1:]))
         else:
             references[int(mutation[1:-1])] = str(mutation[0])
             mutation_counts[int(mutation[1:-1])] += 1
@@ -44,6 +45,7 @@ def get_muatation_counts(mutations, threshold=5):
     max_count = max(mutation_counts.values())
 
     def normalise(count, max_count):
+        #Simple normalisation with rounding to 2 d.p
         return round(count/max_count, 2)
 
     mutation_counts = {index: normalise(mutation_counts[index], max_count) for index in mutation_counts.keys() if mutation_counts[index] >= threshold}
@@ -74,6 +76,8 @@ def trim(s):
     Args:
         s (str): String
     '''
+    if len(s) == 0:
+        return s
     if s[0] == " ":
         return trim(s[1:])
     if s[-1] == " ":
@@ -207,7 +211,11 @@ def run():
 
     @app.route("/")
     def index():
-        '''Render the index page. Also used to deal with cookie logic
+        '''Render the index page. Also used to deal with cookie logic.
+            Cookie logic:
+                There are 2 possible cookies.
+                    1. `cookie_consent`: Cookie to store whether a user has consented to non-essential cookies.
+                    2. `colour`: Cookie used to store the current colour scheme between viewers.
         '''  
         #Check for colour setting
         colour = request.args.get("colour")
@@ -222,6 +230,7 @@ def run():
                 elif colour in ["default", "red", "green", "blue"]:
                     value = colour
                 else:
+                    #Give an errro if cookie is not in approved values
                     return render_template('400.html'), 400
                 #Check for consent
                 if request.cookies.get("cookie_consent") == "yes":
@@ -249,7 +258,8 @@ def run():
             return render_template("index.html")
     @app.route("/cookies")
     def cookies():
-        '''Render an info page about the uses of cookies
+        '''Render an info page about the uses of cookies.
+        Contains a table of values for each cookie, detailing if they are set and their value.
         '''        
         cookie_consent = request.cookies.get("cookie_consent")
         colour = request.cookies.get("colour")
@@ -257,6 +267,9 @@ def run():
     
     @app.route("/viewer/covid/spike")
     def viewer_home():
+        '''Home page for the viewer. Shows a viewer of all mutations in the dataset, and a search bar for searching
+            by lineage.
+        '''
         lin_type1 = request.args.get("lin_type1")
         lineage1 = request.args.get("lineage1")
         if lin_type1 is not None and lineage1 is not None:
@@ -267,24 +280,16 @@ def run():
                 write_new_pdb(mutation_counts, filename="all.pdb", find_missing=True)
             return render_template("viewer.html", pdb="all")
     
-    @app.route("/viewer/covid/spike/<lin_type>")
-    def viewer_lineage_home(lin_type):
-        if lin_type in ["pango", "scorpio"]:
-            return render_template('viewer.html', type=lin_type)
-        else:
-            return render_template('404.html'), 404
-    
     @app.route("/viewer/covid/spike/<lin_type>/<lineage>")
     def view_lineage(lin_type, lineage):
-        '''Page for viewing mutations in the covid spike protein
+        '''Page for viewing mutations in the covid spike protein. Displays a viewer, as well as a table of the 
+            mutations and their possible values.
 
         Args:
-            lineage (str): Name of the pango lineage
+            lin_type (str): Name of the type of lineage. Must be either `scorpio` or `pango`
+            lineage (str): Name of the lineage
         '''        
-        if lin_type == "pango":
-            pass
-            # lineage = lineage.upper()
-        elif lin_type != "scorpio":
+        if lin_type not in  ["scorpio", "pango"]:
             #If the lineage type is not pango or scorpio, 404
             return render_template('404.html'), 404
         #Check if the pdb has already been made, and generate as required
@@ -305,7 +310,14 @@ def run():
     
     @app.route("/viewer/compare/covid/spike/")
     def comparison():
-        '''Render a page for viewing a comparison of 2 lineages
+        '''Render a page for viewing a comparison of 2 lineages. Displays a viewer showing relative mutation for both
+            lineages, as well as a table of relative mutations. Uses GET request arguments.
+
+        Args:
+            lin_type1 (str): Name of the first lineage type.
+            lin_type2 (str): Name of the second lineage type.
+            lineage1 (str): Name of the first lineage.
+            lineage2 (str): Name of the second lineage. 
         '''        
         #Get the lineages to compare
         lin_type1 = request.args.get("lin_type1")
@@ -346,7 +358,10 @@ def run():
     
     @app.route("/list/<lin_type>")
     def list_lineages(lin_type):
-        '''Render a page containing a list of lineages
+        '''Render a page containing a list of lineages filtered by lineage type.
+
+        Args:
+            lineage_type (str): Name of the lineage type. Must be either `scorpio` or `pango`
         '''        
         if lin_type == "pango":
             lineages = sorted(list(set(DATASET["pango_lineage"])))
@@ -359,7 +374,19 @@ def run():
     
     @app.route("/search")
     def search():
-        '''Render a page of results for a lineage search
+        '''Render a page for search results. Has several uses:
+            1. A query is given -> render results page
+            2. A query is given with a lineage type restriction -> render results page with only that lineage type
+            3. A comparison lineage is given -> render a search page to find a lineage to compare against
+            4. A comparison lineage is given and a query is given -> render a results page to find a lineage to compare against
+            Args are given through GET request arguments.
+        
+        Args:
+            query (str): A lineage query
+            type (str): Name of the lineage type to restrict the search to
+            lin_type1 (str): Name of the lineage type to compare against
+            lineage1 (str): Name of the lineage to compare against
+            compare (int): Flag to show whether a comparison is occuring. 
         '''        
         query = request.args.get("query")
         type_restriction = request.args.get("type")
